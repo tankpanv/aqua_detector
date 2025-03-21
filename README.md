@@ -45,6 +45,7 @@ pip install -r requirements.txt
 ```bash
 python train_ensemble.py
 python train_text_model.py
+python evaluate/evaluate.py
 ```
 
 这将依次训练四种不同的基础模型变体，然后训练集成模型。
