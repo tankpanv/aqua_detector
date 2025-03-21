@@ -50,7 +50,7 @@ python evaluate/evaluate.py
 
 这将依次训练四种不同的基础模型变体，然后训练集成模型。
 
-### 2. 仅训练基础模型变体
+### 2. 仅训练基础模型变体（可选）
 
 如果只想训练基础模型变体：
 
@@ -58,7 +58,7 @@ python evaluate/evaluate.py
 python train_ensemble.py --train_variants
 ```
 
-### 3. 使用现有基础模型训练集成模型
+### 3. 使用现有基础模型训练集成模型（可选）
 
 如果已经有训练好的基础模型变体，只想训练集成模型：
 
@@ -69,7 +69,7 @@ python train_ensemble.py --train_ensemble
 ### 4. 内存优化选项
 
 如果遇到内存不足的问题，可以尝试以下方法：
-
+（可选）
 ```bash
 # 使用较小的批处理大小
 python train_ensemble.py --batch_size 16
@@ -81,7 +81,7 @@ python train_ensemble.py --cpu
 python train_ensemble.py --train_variants  # 先训练变体
 python train_ensemble.py --train_ensemble  # 再训练集成模型
 ```
-
+（可选）
 ### 5. 测试模型设备兼容性
 
 训练前或训练后可以使用以下命令检查模型在不同设备上的兼容性：
