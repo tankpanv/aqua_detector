@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水军检测系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+            background-color: #f8f9fa;
+        }
+        .header {
+            margin-bottom: 30px;
+        }
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .detection-panel, .result-panel {
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .panel-title {
+            margin-bottom: 20px;
+            color: #0d6efd;
+            font-weight: 600;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .result-label {
+            font-weight: 500;
+            margin-right: 10px;
+        }
+        .spammer-label {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .normal-label {
+            color: #198754;
+            font-weight: bold;
+        }
+        .network-panel {
+            padding: 20px;
+            border-radius: 10px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .network-description {
+            margin: 20px 0;
+            text-align: left;
+        }
+        .card {
+            height: 100%;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .confidence-bar {
+            height: 20px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .user-info {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        .user-texts {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <header class="header d-flex justify-content-between align-items-center">
+            <h1 class="display-5">水军检测系统</h1>
+            <nav>
+                <a href="/network_analysis" class="btn btn-outline-primary">社交网络分析</a>
+            </nav>
+        </header>
+
+        <div class="row">
+            <div class="col-md-5">
+                <div class="detection-panel">
+                    <h2 class="panel-title">水军检测</h2>
+                    <form id="detectionForm">
+                        <div class="form-group">
+                            <label for="userId" class="form-label">用户ID</label>
+                            <input type="text" class="form-control" id="userId" placeholder="输入微博用户ID (例如: 6941098054)">
+                            <div class="form-text">如果用户ID存在于数据集中，将使用完整用户特征进行检测</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">或者输入微博文本进行检测</label>
+                            <div class="mb-2">
+                                <textarea class="form-control mb-2" id="post1" rows="2" placeholder="微博文本1"></textarea>
+                                <textarea class="form-control mb-2" id="post2" rows="2" placeholder="微博文本2"></textarea>
+                                <textarea class="form-control" id="post3" rows="2" placeholder="微博文本3"></textarea>
+                            </div>
+                            <div class="form-text">输入多条微博文本可以提高检测准确率</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">用户特征参数（可选）</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label class="form-label small">发帖数</label>
+                                        <input type="number" class="form-control form-control-sm" id="postCount" placeholder="默认: 5">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">评论数</label>
+                                        <input type="number" class="form-control form-control-sm" id="commentCount" placeholder="默认: 10">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">转发数</label>
+                                        <input type="number" class="form-control form-control-sm" id="repostCount" placeholder="默认: 5">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label class="form-label small">点赞数</label>
+                                        <input type="number" class="form-control form-control-sm" id="likeCount" placeholder="默认: 20">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">文本长度</label>
+                                        <input type="number" class="form-control form-control-sm" id="textLength" placeholder="默认: 100">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">原创率 (0-1)</label>
+                                        <input type="number" class="form-control form-control-sm" id="originalRate" placeholder="默认: 0.5" step="0.1" min="0" max="1">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">URL率 (0-1)</label>
+                                        <input type="number" class="form-control form-control-sm" id="urlRate" placeholder="默认: 0.1" step="0.1" min="0" max="1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-text">如果不填写，将使用默认值</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">检测</button>
+                    </form>
+                </div>
+                
+                <div class="network-panel mt-4">
+                    <h2 class="panel-title">社交网络分析</h2>
+                    <p class="network-description">
+                        深入分析正常用户与虚假用户（水军）社交网络的显著差异，包括：网络结构、转发关系、地域连接、
+                        活跃模式等多维度特征对比。
+                    </p>
+                    <a href="/network_analysis" class="btn btn-outline-primary">查看详细分析</a>
+                </div>
+            </div>
+            
+            <div class="col-md-7">
+                <div class="result-panel" id="resultPanel" style="display:none;">
+                    <h2 class="panel-title">检测结果</h2>
+                    <div id="loadingIndicator" class="text-center my-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">正在分析中...</p>
+                    </div>
+                    
+                    <div id="resultContent" style="display:none;">
+                        <div class="alert" id="resultAlert" role="alert">
+                            <h4 class="alert-heading">
+                                <span id="resultLabel"></span>
+                            </h4>
+                            <p>置信度: <span id="confidenceValue"></span>%</p>
+                            <div class="confidence-bar" id="confidenceBar"></div>
+                        </div>
+                        
+                        <div id="userInfoSection" class="user-info" style="display:none;">
+                            <h5>用户信息</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>昵称:</strong> <span id="userNickname"></span></p>
+                                    <p><strong>性别:</strong> <span id="userGender"></span></p>
+                                    <p><strong>所在地:</strong> <span id="userLocation"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>粉丝数:</strong> <span id="userFollowers"></span></p>
+                                    <p><strong>关注数:</strong> <span id="userFollowing"></span></p>
+                                    <p><strong>微博数:</strong> <span id="userPosts"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="userTextsSection" class="user-texts" style="display:none;">
+                            <h5>检测的微博文本</h5>
+                            <ul class="list-group" id="textsList"></ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-sm-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">正常用户特征</h5>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">内容多样性高</li>
+                                    <li class="list-group-item">发布时间规律性强</li>
+                                    <li class="list-group-item">社交互动自然</li>
+                                    <li class="list-group-item">转发评论具有独立性</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">水军用户特征</h5>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">内容高度同质</li>
+                                    <li class="list-group-item">短时间爆发式发布</li>
+                                    <li class="list-group-item">群体行为一致性强</li>
+                                    <li class="list-group-item">异常时段活跃度高</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="footer mt-5">
+            <p>水军检测系统 | 基于多视图证据融合的社交媒体虚假账号检测</p>
+            <p>© 2023 多维社交网络分析中心</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('detectionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 获取表单数据
+            const userId = document.getElementById('userId').value.trim();
+            const posts = [
+                document.getElementById('post1').value.trim(),
+                document.getElementById('post2').value.trim(),
+                document.getElementById('post3').value.trim()
+            ].filter(post => post.length > 0);
+            
+            // 验证输入
+            if (!userId && posts.length === 0) {
+                alert('请输入用户ID或至少一条微博文本进行检测');
+                return;
+            }
+            
+            // 清除之前的结果
+            const resultAlert = document.getElementById('resultAlert');
+            if (resultAlert) {
+                resultAlert.innerHTML = '';
+            }
+            
+            // 隐藏用户信息和文本区域
+            document.getElementById('userInfoSection').style.display = 'none';
+            document.getElementById('userTextsSection').style.display = 'none';
+            
+            // 清空文本列表
+            const textsList = document.getElementById('textsList');
+            if (textsList) {
+                textsList.innerHTML = '';
+            }
+            
+            // 发送检测请求
+            // 整合多条微博文本
+            let combinedText = '';
+            if (posts.length > 0) {
+                combinedText = posts.join(' ');
+            }
+            
+            // 准备请求数据
+            const requestData = {};
+            if (userId) {
+                requestData.user_id = userId;
+            }
+            if (combinedText) {
+                requestData.text = combinedText;
+            }
+            
+            // 添加用户特征参数
+            const userFeatures = {};
+            
+            // 获取并验证各个特征值
+            const postCount = document.getElementById('postCount').value.trim();
+            if (postCount !== '') userFeatures.post_count = parseFloat(postCount);
+            
+            const commentCount = document.getElementById('commentCount').value.trim();
+            if (commentCount !== '') userFeatures.comment_count = parseFloat(commentCount);
+            
+            const repostCount = document.getElementById('repostCount').value.trim();
+            if (repostCount !== '') userFeatures.repost_count = parseFloat(repostCount);
+            
+            const likeCount = document.getElementById('likeCount').value.trim();
+            if (likeCount !== '') userFeatures.like_count = parseFloat(likeCount);
+            
+            const textLength = document.getElementById('textLength').value.trim();
+            if (textLength !== '') userFeatures.text_length = parseFloat(textLength);
+            
+            const originalRate = document.getElementById('originalRate').value.trim();
+            if (originalRate !== '') userFeatures.original_rate = parseFloat(originalRate);
+            
+            const urlRate = document.getElementById('urlRate').value.trim();
+            if (urlRate !== '') userFeatures.url_rate = parseFloat(urlRate);
+            
+            // 只有当有特征值时才添加到请求数据中
+            if (Object.keys(userFeatures).length > 0) {
+                requestData.user_features = userFeatures;
+                console.log("添加用户特征:", userFeatures);
+            }
+            
+            // 显示结果面板和加载指示器
+            document.getElementById('resultPanel').style.display = 'block';
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultContent').style.display = 'none';
+            
+            // 发送检测请求
+            fetch('/detect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('resultContent').style.display = 'block';
+                
+                // 显示检测结果
+                const resultLabel = document.getElementById('resultLabel');
+                const resultAlert = document.getElementById('resultAlert');
+                const confidenceValue = document.getElementById('confidenceValue');
+                const confidenceBar = document.getElementById('confidenceBar');
+                
+                // 清除之前可能存在的所有警告或错误信息
+                resultAlert.innerHTML = ''; // 清空结果警告框的内容
+                // 重建结果警告框的基本结构
+                resultAlert.innerHTML = `
+                    <h4 class="alert-heading">
+                        <span id="resultLabel"></span>
+                    </h4>
+                    <p>置信度: <span id="confidenceValue"></span>%</p>
+                    <div class="confidence-bar" id="confidenceBar"></div>
+                `;
+                
+                // 重新获取清空后的元素
+                const newResultLabel = document.getElementById('resultLabel');
+                const newConfidenceValue = document.getElementById('confidenceValue');
+                const newConfidenceBar = document.getElementById('confidenceBar');
+                
+                if (data.is_spammer) {
+                    newResultLabel.textContent = data.text ? '检测为水军内容' : '该账号为水军账号';
+                    newResultLabel.className = 'spammer-label';
+                    resultAlert.className = 'alert alert-danger';
+                    newConfidenceBar.style.backgroundColor = '#dc3545';
+                } else {
+                    newResultLabel.textContent = data.text ? '检测为正常内容' : '该账号为正常用户';
+                    newResultLabel.className = 'normal-label';
+                    resultAlert.className = 'alert alert-success';
+                    newConfidenceBar.style.backgroundColor = '#198754';
+                }
+                
+                // 添加警告信息（如果有）
+                if (data.warning) {
+                    const warningElem = document.createElement('p');
+                    warningElem.className = 'mt-2 text-warning';
+                    warningElem.textContent = data.warning;
+                    resultAlert.appendChild(warningElem);
+                }
+                
+                newConfidenceValue.textContent = data.confidence || 0;
+                newConfidenceBar.style.width = `${data.confidence || 0}%`;
+                
+                // 显示用户信息（如果有）
+                const userInfoSection = document.getElementById('userInfoSection');
+                if (data.user_info) {
+                    document.getElementById('userNickname').textContent = data.user_info.nickname;
+                    document.getElementById('userGender').textContent = data.user_info.gender;
+                    document.getElementById('userLocation').textContent = data.user_info.location;
+                    document.getElementById('userFollowers').textContent = data.user_info.followers;
+                    document.getElementById('userFollowing').textContent = data.user_info.following;
+                    document.getElementById('userPosts').textContent = data.user_info.posts;
+                    userInfoSection.style.display = 'block';
+                } else {
+                    userInfoSection.style.display = 'none';
+                }
+                
+                // 显示检测的微博文本
+                const userTextsSection = document.getElementById('userTextsSection');
+                const textsList = document.getElementById('textsList');
+                
+                // 清空之前的内容
+                textsList.innerHTML = '';
+                
+                // 如果是通过文本检测的方式
+                if (data.text) {
+                    const textItem = document.createElement('li');
+                    textItem.className = 'list-group-item';
+                    textItem.textContent = data.text;
+                    textsList.appendChild(textItem);
+                    userTextsSection.style.display = 'block';
+                } 
+                // 如果是通过用户ID检测，但输入了文本
+                else if (posts.length > 0) {
+                    posts.forEach(post => {
+                        const textItem = document.createElement('li');
+                        textItem.className = 'list-group-item';
+                        textItem.textContent = post;
+                        textsList.appendChild(textItem);
+                    });
+                    userTextsSection.style.display = 'block';
+                }
+                else {
+                    userTextsSection.style.display = 'none';
+                }
+                
+                // 滚动到结果区域
+                document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth' });
+            })
+            .catch(error => {
+                console.error('检测错误:', error);
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('resultContent').style.display = 'block';
+                
+                const resultLabel = document.getElementById('resultLabel');
+                const resultAlert = document.getElementById('resultAlert');
+                
+                // 清除之前可能存在的所有警告或错误信息
+                resultAlert.innerHTML = ''; // 清空结果警告框的内容
+                // 重建结果警告框的基本结构
+                resultAlert.innerHTML = `
+                    <h4 class="alert-heading">
+                        <span id="resultLabel">检测失败，请稍后重试</span>
+                    </h4>
+                `;
+                
+                resultAlert.className = 'alert alert-warning';
+                
+                // 尝试解析详细错误信息
+                let errorDetails = error.message;
+                try {
+                    // 尝试从响应中获取更详细的错误信息
+                    error.json().then(data => {
+                        if (data && data.error) {
+                            const errorMessage = document.createElement('p');
+                            errorMessage.className = 'text-danger mt-2';
+                            errorMessage.textContent = `错误详情: ${data.error}`;
+                            resultAlert.appendChild(errorMessage);
+                            
+                            // 如果有错误堆栈，显示在控制台
+                            if (data.traceback) {
+                                console.error("错误堆栈:", data.traceback);
+                                
+                                // 添加一个折叠的详细错误信息区域
+                                const detailsContainer = document.createElement('div');
+                                detailsContainer.className = 'mt-2';
+                                detailsContainer.innerHTML = `
+                                    <details>
+                                        <summary class="text-danger">查看详细错误信息</summary>
+                                        <pre class="text-danger small mt-2" style="max-height: 200px; overflow-y: auto;">${data.traceback}</pre>
+                                    </details>
+                                `;
+                                resultAlert.appendChild(detailsContainer);
+                            }
+                        }
+                    }).catch(e => {
+                        // 如果无法解析JSON，就显示原始错误
+                        const errorMessage = document.createElement('p');
+                        errorMessage.className = 'text-danger mt-2';
+                        errorMessage.textContent = `错误详情: ${errorDetails}`;
+                        resultAlert.appendChild(errorMessage);
+                    });
+                } catch (e) {
+                    // 如果不能调用json()方法，则直接显示错误消息
+                    const errorMessage = document.createElement('p');
+                    errorMessage.className = 'text-danger mt-2';
+                    errorMessage.textContent = `错误详情: ${errorDetails}`;
+                    resultAlert.appendChild(errorMessage);
+                }
+                
+                // 重置置信度和相关显示区域
+                const confidenceValue = document.getElementById('confidenceValue');
+                const confidenceBar = document.getElementById('confidenceBar');
+                if (confidenceValue) confidenceValue.textContent = '-';
+                if (confidenceBar) {
+                    confidenceBar.style.width = '0%';
+                    confidenceBar.style.backgroundColor = '#e9ecef';
+                }
+                
+                // 隐藏用户信息和文本区域
+                document.getElementById('userInfoSection').style.display = 'none';
+                document.getElementById('userTextsSection').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 

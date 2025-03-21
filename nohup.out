@@ -1,0 +1,257 @@
+Building prefix dict from the default dictionary ...
+Loading model from cache /tmp/jieba.cache
+Loading model cost 0.550 seconds.
+Prefix dict has been built successfully.
+/home/ubuntu/miniconda3/envs/aenv/lib/python3.10/site-packages/huggingface_hub/file_download.py:797: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Some weights of the model checkpoint at bert-base-chinese were not used when initializing BertModel: ['cls.predictions.transform.dense.bias', 'cls.predictions.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.dense.weight', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.weight']
+- This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+检查并生成网络分析图像...
+已加载真实数据: 2233个用户, 391194条微博
+缺少转发信息，无法构建转发网络
+使用真实数据生成分析图像完成
+成功加载模型：/home/ubuntu/workspace/aqua_detector/models/saved/best_model.pt
+加载了 391194 条微博数据
+加载了 2233 条用户数据
+          id        用户id  ...     id_user is_spammer
+0  HkihaF1ed  6941098054  ...  6941098054          1
+1  Hkid6A0Nr  6941098054  ...  6941098054          1
+2  Hki8Mm67I  6941098054  ...  6941098054          1
+3  Hki4IxRO7  6941098054  ...  6941098054          1
+4  Hki0EvyOu  6941098054  ...  6941098054          1
+
+[5 rows x 12 columns]
+准备特征...
+有效训练用户数量: 752
+成功加载关系数据：/home/ubuntu/workspace/aqua_detector/data/relation.csv
+ * Serving Flask app 'app'
+ * Debug mode: on
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5003
+ * Running on http://192.168.1.114:5003
+[33mPress CTRL+C to quit[0m
+ * Restarting with stat
+Building prefix dict from the default dictionary ...
+Loading model from cache /tmp/jieba.cache
+Loading model cost 0.521 seconds.
+Prefix dict has been built successfully.
+/home/ubuntu/miniconda3/envs/aenv/lib/python3.10/site-packages/huggingface_hub/file_download.py:797: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Some weights of the model checkpoint at bert-base-chinese were not used when initializing BertModel: ['cls.predictions.transform.dense.bias', 'cls.seq_relationship.weight', 'cls.predictions.transform.dense.weight', 'cls.predictions.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.LayerNorm.bias', 'cls.predictions.transform.LayerNorm.weight']
+- This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+ * Debugger is active!
+ * Debugger PIN: 553-267-318
+127.0.0.1 - - [11/Mar/2025 20:13:21] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:13:32] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:13:34] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:54:30] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:54:33] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:55:33] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:56:03] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:56:04] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:57:22] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:57:49] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:57:59] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:09] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "GET /network_analysis HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "GET /static/images/normal_network.png HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/hourly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/spam_network.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/degree_distribution.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "GET /api/analyze_networks HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "GET /api/network_stats HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "GET /static/images/normal_network.png?t=1741697897311 HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/degree_distribution.png?t=1741697897311 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/spam_network.png?t=1741697897311 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/hourly_activity.png?t=1741697897311 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/monthly_activity.png?t=1741697897311 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/region_connections.png?t=1741697897311 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:17] "[33mGET /static/images/repost_patterns.png?t=1741697897311 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:18] "[33mGET /static/images/content_homophily.png?t=1741697897311 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:37] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:39] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:46] "GET /network_analysis HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "GET /static/images/normal_network.png HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/spam_network.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "GET /api/network_stats HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "GET /api/analyze_networks HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/degree_distribution.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/hourly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/spam_network.png?t=1741697926911 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/degree_distribution.png?t=1741697926911 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "GET /static/images/normal_network.png?t=1741697926911 HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/hourly_activity.png?t=1741697926911 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/monthly_activity.png?t=1741697926911 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/repost_patterns.png?t=1741697926911 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/region_connections.png?t=1741697926911 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:58:47] "[33mGET /static/images/content_homophily.png?t=1741697926911 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 20:59:52] "POST /detect HTTP/1.1" 200 -
+/home/ubuntu/workspace/aqua_detector/web/app.py:79: FutureWarning: elementwise comparison failed; returning scalar instead, but in the future will perform elementwise comparison
+  if user_id and user_id in data_processor.user_df['id'].values:
+127.0.0.1 - - [11/Mar/2025 21:01:25] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:01:59] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:02:27] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:02:38] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:02:55] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:05:22] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:05:40] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:06:42] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:07:02] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:07:10] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:07:36] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:07:58] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:08:01] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:08:14] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:10:43] "[33mGET /robots.txt HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:10:45] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:11:16] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:11:52] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:13:42] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:13:57] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:14:12] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:14:23] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:16:05] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:16:10] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:16:16] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:17:31] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:18:03] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:18:07] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:18:09] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:18:30] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:18:59] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:21:00] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:21:46] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:21:48] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:21:50] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "GET /network_analysis HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "GET /static/images/normal_network.png HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/spam_network.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "GET /api/network_stats HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "GET /api/analyze_networks HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/degree_distribution.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/hourly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/spam_network.png?t=1741699331001 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/degree_distribution.png?t=1741699331001 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/hourly_activity.png?t=1741699331001 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/monthly_activity.png?t=1741699331001 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "GET /static/images/normal_network.png?t=1741699331001 HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/repost_patterns.png?t=1741699331001 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/region_connections.png?t=1741699331001 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:22:11] "[33mGET /static/images/content_homophily.png?t=1741699331001 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:16] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:23:27] "POST /detect HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "GET /network_analysis HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[36mGET /static/images/normal_network.png HTTP/1.1[0m" 304 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/spam_network.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/monthly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "GET /api/network_stats HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "GET /api/analyze_networks HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/degree_distribution.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/hourly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/repost_patterns.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/degree_distribution.png?t=1741699416999 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "GET /static/images/normal_network.png?t=1741699416999 HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/spam_network.png?t=1741699416999 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/hourly_activity.png?t=1741699416999 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/monthly_activity.png?t=1741699416999 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/repost_patterns.png?t=1741699416999 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/region_connections.png?t=1741699416999 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:23:37] "[33mGET /static/images/content_homophily.png?t=1741699416999 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:25:38] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:26:05] "GET /network_analysis HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:27:03] "GET /api/network_stats HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:27:03] "GET /api/analyze_networks HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:27:29] "[33mGET /static/images/degree_distribution.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:27:29] "GET /static/images/normal_network.png HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 21:27:33] "[33mGET /static/images/hourly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:27:33] "[33mGET /static/images/monthly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 21:27:38] "[33mGET /static/images/spam_network.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [11/Mar/2025 22:51:54] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 22:51:55] "GET /network_analysis HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 23:48:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Mar/2025 23:48:03] "GET /network_analysis HTTP/1.1" 200 -
+127.0.0.1 - - [12/Mar/2025 05:44:19] "GET /network_analysis HTTP/1.1" 200 -
+127.0.0.1 - - [12/Mar/2025 05:44:19] "GET /static/images/normal_network.png HTTP/1.1" 200 -
+127.0.0.1 - - [12/Mar/2025 05:44:19] "[33mGET /static/images/monthly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:19] "[33mGET /static/images/hourly_activity.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:19] "[33mGET /static/images/degree_distribution.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:19] "[33mGET /static/images/spam_network.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:19] "[33mGET /static/images/repost_patterns.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "GET /api/analyze_networks HTTP/1.1" 200 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/region_connections.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "GET /api/network_stats HTTP/1.1" 200 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/content_homophily.png HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/degree_distribution.png?t=1741729459647 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "GET /static/images/normal_network.png?t=1741729459647 HTTP/1.1" 200 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/spam_network.png?t=1741729459647 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/hourly_activity.png?t=1741729459647 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/monthly_activity.png?t=1741729459647 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/region_connections.png?t=1741729459648 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/repost_patterns.png?t=1741729459647 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:20] "[33mGET /static/images/content_homophily.png?t=1741729459648 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [12/Mar/2025 05:44:32] "GET / HTTP/1.1" 200 -
+ * Detected change in '/home/ubuntu/workspace/aqua_detector/utils/generate_relations.py', reloading
+检查并生成网络分析图像...
+已加载真实数据: 2233个用户, 391194条微博
+缺少转发信息，无法构建转发网络
+使用真实数据生成分析图像完成
+成功加载模型：/home/ubuntu/workspace/aqua_detector/models/saved/best_model.pt
+加载了 391194 条微博数据
+加载了 2233 条用户数据
+          id        用户id  ...     id_user is_spammer
+0  HkihaF1ed  6941098054  ...  6941098054          1
+1  Hkid6A0Nr  6941098054  ...  6941098054          1
+2  Hki8Mm67I  6941098054  ...  6941098054          1
+3  Hki4IxRO7  6941098054  ...  6941098054          1
+4  Hki0EvyOu  6941098054  ...  6941098054          1
+
+[5 rows x 12 columns]
+准备特征...
+有效训练用户数量: 752
+成功加载关系数据：/home/ubuntu/workspace/aqua_detector/data/relation.csv
+ * Restarting with stat
+Building prefix dict from the default dictionary ...
+Loading model from cache /tmp/jieba.cache
+Loading model cost 0.538 seconds.
+Prefix dict has been built successfully.
+/home/ubuntu/miniconda3/envs/aenv/lib/python3.10/site-packages/huggingface_hub/file_download.py:797: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Some weights of the model checkpoint at bert-base-chinese were not used when initializing BertModel: ['cls.predictions.transform.dense.weight', 'cls.predictions.transform.dense.bias', 'cls.seq_relationship.bias', 'cls.predictions.bias', 'cls.seq_relationship.weight', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.LayerNorm.bias']
+- This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+ * Debugger is active!
+ * Debugger PIN: 553-267-318
+ * Detected change in '/home/ubuntu/workspace/aqua_detector/web/app.py', reloading
+检查并生成网络分析图像...
+已加载真实数据: 2233个用户, 391194条微博
+缺少转发信息，无法构建转发网络
+使用真实数据生成分析图像完成
+成功加载模型：/home/ubuntu/workspace/aqua_detector/models/saved/best_model.pt
+加载了 391194 条微博数据
+加载了 2233 条用户数据
+          id        用户id  ...     id_user is_spammer
+0  HkihaF1ed  6941098054  ...  6941098054          1
+1  Hkid6A0Nr  6941098054  ...  6941098054          1
+2  Hki8Mm67I  6941098054  ...  6941098054          1
+3  Hki4IxRO7  6941098054  ...  6941098054          1
+4  Hki0EvyOu  6941098054  ...  6941098054          1
+
+[5 rows x 12 columns]
+准备特征...
+有效训练用户数量: 752
+成功加载关系数据：/home/ubuntu/workspace/aqua_detector/data/relation.csv
+ * Restarting with stat
+Building prefix dict from the default dictionary ...
+Loading model from cache /tmp/jieba.cache
+Loading model cost 0.524 seconds.
+Prefix dict has been built successfully.
+/home/ubuntu/miniconda3/envs/aenv/lib/python3.10/site-packages/huggingface_hub/file_download.py:797: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Some weights of the model checkpoint at bert-base-chinese were not used when initializing BertModel: ['cls.predictions.bias', 'cls.seq_relationship.bias', 'cls.predictions.transform.LayerNorm.weight', 'cls.predictions.transform.dense.bias', 'cls.predictions.transform.LayerNorm.bias', 'cls.seq_relationship.weight', 'cls.predictions.transform.dense.weight']
+- This IS expected if you are initializing BertModel from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing BertModel from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+ * Debugger is active!
+ * Debugger PIN: 553-267-318

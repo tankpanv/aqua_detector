@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水军检测系统 - 社交网络分析</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+            background-color: #f8f9fa;
+        }
+        .network-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            color: #0d6efd;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .network-image {
+            max-width: 100%;
+            height: auto;
+            margin: 15px 0;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .network-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
+        .stat-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #212529;
+        }
+        .normal-user {
+            color: #0d6efd;
+        }
+        .spammer-user {
+            color: #dc3545;
+        }
+        .tab-content {
+            padding: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-5">水军社交网络分析</h1>
+            <nav>
+                <a href="/" class="btn btn-outline-primary">返回主页</a>
+            </nav>
+        </header>
+
+        <div class="network-section">
+            <h2 class="section-title">网络概览</h2>
+            <div id="networkStats" class="network-stats">
+                <div class="stat-card">
+                    <div class="stat-label">正常用户数量</div>
+                    <div class="stat-value normal-user" id="normalUserCount">加载中...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">水军用户数量</div>
+                    <div class="stat-value spammer-user" id="spammerUserCount">加载中...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">总微博数量</div>
+                    <div class="stat-value" id="totalWeibos">加载中...</div>
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs" id="networkTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="network-structure-tab" data-bs-toggle="tab" data-bs-target="#network-structure" type="button" role="tab" aria-controls="network-structure" aria-selected="true">网络结构</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="activity-patterns-tab" data-bs-toggle="tab" data-bs-target="#activity-patterns" type="button" role="tab" aria-controls="activity-patterns" aria-selected="false">活跃模式</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="repost-relations-tab" data-bs-toggle="tab" data-bs-target="#repost-relations" type="button" role="tab" aria-controls="repost-relations" aria-selected="false">转发关系</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="regional-relations-tab" data-bs-toggle="tab" data-bs-target="#regional-relations" type="button" role="tab" aria-controls="regional-relations" aria-selected="false">地域关系</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="content-analysis-tab" data-bs-toggle="tab" data-bs-target="#content-analysis" type="button" role="tab" aria-controls="content-analysis" aria-selected="false">内容分析</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="networkTabContent">
+            <!-- 网络结构标签页 -->
+            <div class="tab-pane fade show active" id="network-structure" role="tabpanel" aria-labelledby="network-structure-tab">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="network-section">
+                            <h3>正常用户网络</h3>
+                            <p>连接稠密，外围小的聚集，社区结构明显</p>
+                            <img src="/static/images/normal_network.png" alt="正常用户网络" class="network-image" id="normalNetworkImage">
+                            <div class="network-stats">
+                                <div class="stat-card">
+                                    <div class="stat-label">平均度数</div>
+                                    <div class="stat-value" id="normalAvgDegree">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">平均路径长度</div>
+                                    <div class="stat-value" id="normalAvgPathLength">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">聚类系数</div>
+                                    <div class="stat-value" id="normalClusteringCoeff">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="network-section">
+                            <h3>水军用户网络</h3>
+                            <p>一个个小的聚集圈，小世界现象显著</p>
+                            <img src="/static/images/spam_network.png" alt="水军用户网络" class="network-image" id="spamNetworkImage">
+                            <div class="network-stats">
+                                <div class="stat-card">
+                                    <div class="stat-label">平均度数</div>
+                                    <div class="stat-value" id="spammerAvgDegree">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">平均路径长度</div>
+                                    <div class="stat-value" id="spammerAvgPathLength">-</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-label">聚类系数</div>
+                                    <div class="stat-value" id="spammerClusteringCoeff">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="network-section mt-4">
+                    <h3>度分布对比</h3>
+                    <p>正常用户网络与水军用户网络的度分布对比</p>
+                    <img src="/static/images/degree_distribution.png" alt="度分布对比" class="network-image" id="degreeDistImage">
+                </div>
+            </div>
+            
+            <!-- 活跃模式标签页 -->
+            <div class="tab-pane fade" id="activity-patterns" role="tabpanel" aria-labelledby="activity-patterns-tab">
+                <div class="network-section">
+                    <h3>时间活跃模式</h3>
+                    <p>正常用户在中午和晚上有两个高峰，符合正常用户通勤作息。水军用户夜间频率高</p>
+                    <img src="/static/images/hourly_activity.png" alt="每日活跃时间" class="network-image" id="hourlyActivityImage">
+                </div>
+                
+                <div class="network-section mt-4">
+                    <h3>月度活跃模式</h3>
+                    <p>正常用户各月较为均衡，而水军用户有短时突发性</p>
+                    <img src="/static/images/monthly_activity.png" alt="月度活跃时间" class="network-image" id="monthlyActivityImage">
+                </div>
+            </div>
+            
+            <!-- 转发关系标签页 -->
+            <div class="tab-pane fade" id="repost-relations" role="tabpanel" aria-labelledby="repost-relations-tab">
+                <div class="network-section">
+                    <h3>微博转发关系</h3>
+                    <p>正常用户的社交网络间存在微博转发关系，形成可观的转发网络</p>
+                    <img src="/static/images/repost_patterns.png" alt="微博转发关系" class="network-image" id="repostPatternsImage">
+                </div>
+            </div>
+            
+            <!-- 地域关系标签页 -->
+            <div class="tab-pane fade" id="regional-relations" role="tabpanel" aria-labelledby="regional-relations-tab">
+                <div class="network-section">
+                    <h3>地域间关注关系</h3>
+                    <p>正常用户与好友通常在地理位置上较近，如在江浙沪形成聚集，而水军用户与好友距离较远</p>
+                    <img src="/static/images/region_connections.png" alt="地域间关注关系" class="network-image" id="regionConnectionsImage">
+                </div>
+            </div>
+            
+            <!-- 内容分析标签页 -->
+            <div class="tab-pane fade" id="content-analysis" role="tabpanel" aria-labelledby="content-analysis-tab">
+                <div class="network-section">
+                    <h3>内容同质性</h3>
+                    <p>比较用户的微博内容相似度，正常用户内容多样性更高</p>
+                    <img src="/static/images/content_homophily.png" alt="内容同质性" class="network-image" id="contentHomophilyImage">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 页面加载时获取网络统计数据
+        window.addEventListener('DOMContentLoaded', function() {
+            // 获取基本统计信息
+            fetch('/api/network_stats')
+                .then(response => response.json())
+                .then(data => {
+                    if(data.error) {
+                        console.error('获取网络统计数据失败:', data.error);
+                        return;
+                    }
+                    
+                    document.getElementById('normalUserCount').textContent = data.normal_users || '未知';
+                    document.getElementById('spammerUserCount').textContent = data.spammer_users || '未知';
+                    document.getElementById('totalWeibos').textContent = data.total_weibos || '未知';
+                })
+                .catch(error => {
+                    console.error('获取网络统计数据时出错:', error);
+                });
+            
+            // 获取网络分析结果
+            fetch('/api/analyze_networks')
+                .then(response => response.json())
+                .then(data => {
+                    if(!data.success) {
+                        console.error('网络分析失败:', data.error);
+                        return;
+                    }
+                    
+                    // 填充网络属性数据
+                    if(data.results && data.results.network_properties) {
+                        const props = data.results.network_properties;
+                        
+                        if(props.normal) {
+                            document.getElementById('normalAvgDegree').textContent = 
+                                props.normal.avg_degree ? props.normal.avg_degree.toFixed(2) : '-';
+                            document.getElementById('normalAvgPathLength').textContent = 
+                                props.normal.avg_path_length ? props.normal.avg_path_length.toFixed(2) : '-';
+                            document.getElementById('normalClusteringCoeff').textContent = 
+                                props.normal.clustering_coefficient ? props.normal.clustering_coefficient.toFixed(3) : '-';
+                        }
+                        
+                        if(props.spammer) {
+                            document.getElementById('spammerAvgDegree').textContent = 
+                                props.spammer.avg_degree ? props.spammer.avg_degree.toFixed(2) : '-';
+                            document.getElementById('spammerAvgPathLength').textContent = 
+                                props.spammer.avg_path_length ? props.spammer.avg_path_length.toFixed(2) : '-';
+                            document.getElementById('spammerClusteringCoeff').textContent = 
+                                props.spammer.clustering_coefficient ? props.spammer.clustering_coefficient.toFixed(3) : '-';
+                        }
+                    }
+                    
+                    // 刷新图片缓存
+                    const images = document.querySelectorAll('.network-image');
+                    images.forEach(img => {
+                        const src = img.src;
+                        img.src = src + '?t=' + new Date().getTime();
+                    });
+                })
+                .catch(error => {
+                    console.error('获取网络分析结果时出错:', error);
+                });
+        });
+    </script>
+</body>
+</html> 

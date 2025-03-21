@@ -1,0 +1,13 @@
+{
+    "start_time": "2025-03-17 16:15:14.044544",
+    "end_time": "2025-03-17 16:45:21.156435",
+    "duration": "0:30:07.111891",
+    "device": "cuda",
+    "best_models": {
+        "default": "models/saved/variants/default_best.pt",
+        "text_focus": "models/saved/variants/text_focus_best.pt",
+        "user_focus": "models/saved/variants/user_focus_best.pt",
+        "balanced": "models/saved/variants/balanced_best.pt"
+    },
+    "ensemble_model": "models/saved/ensemble/ensemble_best.pt"
+}
