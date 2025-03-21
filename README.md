@@ -131,7 +131,7 @@ cd web
 python app.py
 ```
 
-访问 http://localhost:5000 使用Web界面进行检测。
+访问 http://localhost:5003 使用Web界面进行检测。
 
 ## 检测结果解读
 
