@@ -393,7 +393,11 @@ def main():
     parser.add_argument('--train_variants', action='store_true', help='是否训练基础模型变体')
     parser.add_argument('--train_ensemble', action='store_true', help='是否训练集成模型')
     parser.add_argument('--cpu', action='store_true', help='强制使用CPU训练')
+    parser.add_argument('--gpu', action='store_true', help='强制使用GPU训练（如果可用）')
+    parser.add_argument('--gpu_id', type=int, default=0, help='指定使用的GPU ID（多GPU系统）')
     parser.add_argument('--batch_size', type=int, default=None, help='指定批处理大小，可以减小以避免内存不足')
+    parser.add_argument('--min_users', type=int, default=None, help='设置最小训练用户数量')
+    parser.add_argument('--force_balance', action='store_true', help='强制平衡正负样本')
     args = parser.parse_args()
     
     # 如果没有指定任何操作，默认全部执行
@@ -404,15 +408,26 @@ def main():
     # 设置配置和设备
     config = Config()
     
-    # 如果指定了批处理大小，替换配置中的值
+    # 应用命令行参数到配置
+    if args.min_users is not None:
+        config.MIN_TRAINING_USERS = args.min_users
+        print(f"使用自定义最小训练用户数: {config.MIN_TRAINING_USERS}")
+    
     if args.batch_size is not None:
         config.BATCH_SIZE = args.batch_size
         print(f"使用自定义批处理大小: {config.BATCH_SIZE}")
     
+    config.FORCE_BALANCE_SAMPLING = args.force_balance
+    print(f"强制平衡采样: {config.FORCE_BALANCE_SAMPLING}")
+    
     # 设置设备
-    if args.cpu:
-        device = torch.device("cpu")
-        print("强制使用CPU进行训练")
+    if args.gpu:
+        if torch.cuda.is_available():
+            device = torch.device(f"cuda:{args.gpu_id}")
+            print(f"强制使用GPU训练: {torch.cuda.get_device_name(args.gpu_id)}")
+        else:
+            print("警告: 请求使用GPU但CUDA不可用，回退到CPU")
+            device = torch.device("cpu")
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if torch.cuda.is_available():
@@ -430,6 +445,23 @@ def main():
     data_processor.load_data()
     data_processor.prepare_features()
     train_loader, val_loader, _ = data_processor.get_dataloaders()
+    
+    # 添加特征检验逻辑
+    print("验证特征向量...")
+    try:
+        # 提取样本特征
+        sample_batch = next(iter(train_loader))
+        print(f"批次特征形状: 文本输入={sample_batch['input_ids'].shape}, 用户特征={sample_batch['user_features'].shape}")
+        
+        # 检查特征是否包含NaN
+        has_nan = torch.isnan(sample_batch['user_features']).any()
+        if has_nan:
+            print("警告: 用户特征包含NaN值! 将替换为0...")
+            # 替换NaN为0
+            sample_batch['user_features'] = torch.nan_to_num(sample_batch['user_features'])
+    except Exception as e:
+        print(f"特征验证失败: {e}")
+        print("继续训练，但请注意可能存在数据问题")
     
     # 创建结果目录
     os.makedirs('models/saved/variants', exist_ok=True)

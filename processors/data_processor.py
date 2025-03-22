@@ -17,29 +17,82 @@ class WeiboDataProcessor:
         self.tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME)
         
     def load_data(self):
-        """加载微博数据和用户详情数据"""
-        self.weibo_df = pd.read_csv(self.config.WEIBO_PATH)
-        self.user_df = pd.read_csv(self.config.USER_DETAIL_PATH)
-        print(f"加载了 {len(self.weibo_df)} 条微博数据")
-        print(f"加载了 {len(self.user_df)} 条用户数据")
+        """加载微博数据和用户数据，处理不同平台的编码问题"""
+        print("加载数据...")
+        
+        # 尝试不同编码加载数据
+        encodings = [self.config.DEFAULT_ENCODING, self.config.FALLBACK_ENCODING, 'latin1']
+        
+        # 加载用户数据
+        for encoding in encodings:
+            try:
+                print(f"尝试使用 {encoding} 编码加载用户数据...")
+                self.user_df = pd.read_csv(self.config.USER_DETAIL_PATH, encoding=encoding)
+                print(f"用户数据加载成功，使用编码: {encoding}")
+                break
+            except UnicodeDecodeError:
+                print(f"编码 {encoding} 加载失败，尝试下一个...")
+            except Exception as e:
+                print(f"加载用户数据时出错: {str(e)}")
+                raise
+        
+        # 加载微博数据
+        for encoding in encodings:
+            try:
+                print(f"尝试使用 {encoding} 编码加载微博数据...")
+                self.weibo_df = pd.read_csv(self.config.WEIBO_PATH, encoding=encoding)
+                print(f"微博数据加载成功，使用编码: {encoding}")
+                break
+            except UnicodeDecodeError:
+                print(f"编码 {encoding} 加载失败，尝试下一个...")
+            except Exception as e:
+                print(f"加载微博数据时出错: {str(e)}")
+                raise
+        
+        print(f"加载完成 - 用户数: {len(self.user_df)}, 微博数: {len(self.weibo_df)}")
+        
+        # 数据加载后添加验证步骤
+        print(f"用户数据列: {self.user_df.columns.tolist()}")
+        print(f"微博数据列: {self.weibo_df.columns.tolist()}")
+        
+        # 检查必要的列是否存在
+        required_user_cols = ['id', '类别']
+        required_weibo_cols = ['用户id', '内容', '发布时间']
+        
+        for col in required_user_cols:
+            if col not in self.user_df.columns:
+                print(f"警告: 用户数据缺少必要的列: {col}")
+            
+        for col in required_weibo_cols:
+            if col not in self.weibo_df.columns:
+                print(f"警告: 微博数据缺少必要的列: {col}")
         
         # 列名修正：把最后一列'类别'作为水军标识，大于0的为水军
         self.user_df['is_spammer'] = (self.user_df['类别'] > 0).astype(int)
         
-        # 合并用户标签，使用suffixes避免列名冲突
-        self.weibo_df = self.weibo_df.merge(
-            self.user_df[['id', 'is_spammer']], 
-            left_on='用户id',  # 使用 weibo_df 的 '用户id' 列
-            right_on='id',    # 使用 user_df 的 'id' 列
-            how='left',
-            suffixes=('', '_user')  # 避免列名冲突
-        )
-        
-        # 处理合并后可能存在的缺失值
-        self.weibo_df['is_spammer'] = self.weibo_df['is_spammer'].fillna(0)
-        
+        try:
+            # 合并用户标签，使用suffixes避免列名冲突
+            self.weibo_df = self.weibo_df.merge(
+                self.user_df[['id', 'is_spammer']], 
+                left_on='用户id',
+                right_on='id',
+                how='left',
+                suffixes=('', '_user')
+            )
+            
+            # 处理合并后可能存在的缺失值
+            self.weibo_df['is_spammer'] = self.weibo_df['is_spammer'].fillna(0)
+        except Exception as e:
+            print(f"合并数据时出错: {str(e)}")
+            # 如果合并失败，确保weibo_df至少有is_spammer列
+            if 'is_spammer' not in self.weibo_df.columns:
+                self.weibo_df['is_spammer'] = 0
+            
         # 调试输出
-        print(self.weibo_df.head())
+        print(f"有效用户ID数量: {self.user_df['id'].nunique()}")
+        print(f"微博中独特用户ID数量: {self.weibo_df['用户id'].nunique()}")
+        print(f"水军用户数量: {len(self.user_df[self.user_df['is_spammer'] == 1])}")
+    
     def preprocess_text(self, text):
         """文本预处理"""
         if pd.isna(text):
@@ -95,22 +148,52 @@ class WeiboDataProcessor:
         time_df = pd.DataFrame(time_features.tolist())
         self.weibo_df = pd.concat([self.weibo_df, time_df], axis=1)
         
-        # 重采样平衡数据
+        # 获取水军和正常用户
         spammer_users = self.user_df[self.user_df['is_spammer'] == 1]['id'].astype(int).tolist()
         normal_users = self.user_df[self.user_df['is_spammer'] == 0]['id'].astype(int).tolist()
         
-        if len(normal_users) > len(spammer_users):
-            sampled_normal_users = np.random.choice(normal_users, len(spammer_users), replace=False)
-            final_users = np.concatenate([sampled_normal_users, spammer_users])
-        else:
-            sampled_spammer_users = np.random.choice(spammer_users, len(normal_users), replace=False)
-            final_users = np.concatenate([normal_users, sampled_spammer_users])
+        print(f"原始水军用户数: {len(spammer_users)}, 正常用户数: {len(normal_users)}")
         
+        # 检查是否满足最小训练用户数要求
+        min_users = getattr(self.config, 'MIN_TRAINING_USERS', 20)
+        force_balance = getattr(self.config, 'FORCE_BALANCE_SAMPLING', True)
+        
+        if len(spammer_users) < min_users or len(normal_users) < min_users:
+            print(f"警告: 用户数少于最小要求({min_users})! 水军: {len(spammer_users)}, 正常: {len(normal_users)}")
+            print("使用重复采样确保每类至少有最小训练用户数...")
+            
+            # 确保每类至少有min_users个用户
+            if len(spammer_users) < min_users:
+                spammer_users = np.random.choice(spammer_users, min_users, replace=True).tolist()
+            if len(normal_users) < min_users:
+                normal_users = np.random.choice(normal_users, min_users, replace=True).tolist()
+            
+            print(f"重采样后 - 水军用户数: {len(spammer_users)}, 正常用户数: {len(normal_users)}")
+        
+        # 根据force_balance参数决定是否平衡正负样本
+        if force_balance:
+            # 平衡正负样本数量
+            if len(normal_users) > len(spammer_users):
+                sampled_normal_users = np.random.choice(normal_users, len(spammer_users), replace=False)
+                final_users = np.concatenate([sampled_normal_users, spammer_users])
+            else:
+                sampled_spammer_users = np.random.choice(spammer_users, len(normal_users), replace=False)
+                final_users = np.concatenate([normal_users, sampled_spammer_users])
+        else:
+            # 不需要平衡，使用所有用户
+            final_users = np.concatenate([normal_users, spammer_users])
+        
+        # 去重并检查ID是否存在
         final_users = list(set(final_users))
         existing_ids = set(self.user_df['id'].astype(int).unique())
         valid_final_users = [uid for uid in final_users if uid in existing_ids]
+        
         self.final_user_df = self.user_df[self.user_df['id'].isin(valid_final_users)]
-        print(f"有效训练用户数量: {len(self.final_user_df)}")
+        print(f"最终有效训练用户数量: {len(self.final_user_df)}")
+        # 输出正负样本比例
+        positive = len(self.final_user_df[self.final_user_df['is_spammer'] == 1])
+        negative = len(self.final_user_df[self.final_user_df['is_spammer'] == 0])
+        print(f"最终样本分布 - 水军: {positive}, 正常用户: {negative}, 比例: {positive/(positive+negative):.2f}")
         
     def split_data(self):
         """分割数据为训练集、验证集和测试集"""

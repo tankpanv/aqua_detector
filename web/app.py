@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, jsonify
+import platform
+import codecs
+import locale
 import torch
 import pandas as pd
 import os
@@ -6,6 +8,37 @@ import sys
 import json
 import numpy as np
 import traceback
+import argparse
+from flask import Flask, render_template, request, jsonify
+
+# 操作系统检测
+SYSTEM_TYPE = platform.system()  # 'Windows', 'Linux', 或 'Darwin' (macOS)
+print(f"当前运行环境: {SYSTEM_TYPE}")
+
+# 终端和系统默认编码检测
+try:
+    SYSTEM_ENCODING = locale.getpreferredencoding()
+    print(f"系统默认编码: {SYSTEM_ENCODING}")
+except:
+    SYSTEM_ENCODING = 'utf-8'
+    print(f"无法检测系统编码，使用默认编码: {SYSTEM_ENCODING}")
+
+# 初始化全局变量
+text_only_model = None
+model = None
+using_ensemble = False
+device = None
+
+# 统一文件路径处理函数
+def get_platform_path(path_components):
+    """创建跨平台兼容的路径"""
+    # 转换所有正斜杠为系统适合的分隔符
+    path = os.path.join(*path_components)
+    # 确保路径存在
+    dir_path = os.path.dirname(path)
+    if dir_path and not os.path.exists(dir_path):
+        os.makedirs(dir_path, exist_ok=True)
+    return path
 
 # 添加项目根目录到系统路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -58,105 +91,151 @@ SUSPICIOUS_SIGNALS = {
     }
 }
 
+# 修改模型路径获取方式
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 # 检查模型文件是否存在
-ensemble_model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models/saved/ensemble/ensemble_best.pt')
-base_model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models/saved/best_model.pt')
-text_model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models/saved/text_only_model.pt')
-print(f"查找文本专用模型路径: {text_model_path}")
-
-# 加载文本专用模型
-text_only_model = None
-if os.path.exists(text_model_path):
-    print(f"找到文本专用模型文件，开始加载：{text_model_path}")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    try:
-        text_only_model = TextOnlySpammerDetectionModel(config)
-        checkpoint = torch.load(text_model_path, map_location=device)
-        text_only_model.load_state_dict(checkpoint['model_state_dict'])
-        text_only_model = text_only_model.to(device)
-        text_only_model.eval()
-        print("文本专用模型加载成功")
-    except Exception as e:
-        print(f"加载文本专用模型时出错: {str(e)}")
-        traceback.print_exc()
-        text_only_model = None
-else:
-    print(f"警告: 文本专用模型文件 {text_model_path} 不存在，纯文本分析将使用通用模型")
-
-# 优先加载集成模型，如果存在
-if os.path.exists(ensemble_model_path):
-    print(f"加载集成模型：{ensemble_model_path}")
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    checkpoint = torch.load(ensemble_model_path, map_location=device)
+def load_models(config):
+    """加载模型，处理不同平台兼容性"""
     
-    # 加载集成模型所需的基础模型路径
-    base_model_paths = checkpoint.get('base_model_paths', [])
-    if not base_model_paths:
-        # 如果没有保存基础模型路径，尝试查找变体目录下的模型
-        variant_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'models/saved/variants')
-        if os.path.exists(variant_dir):
-            base_model_paths = [
-                os.path.join(variant_dir, f) 
-                for f in os.listdir(variant_dir) 
-                if f.endswith('_best.pt') or f.endswith('_final.pt')
-            ][:4]  # 最多使用4个基础模型
+    # 声明全局变量
+    global text_only_model, model, using_ensemble, device
     
-    if base_model_paths:
-        # 创建并加载集成模型
-        from models.ensemble_model import EnsembleModel
-        ensemble_model = EnsembleModel(config, device)
-        ensemble_model.load_state_dict(checkpoint['model_state_dict'])
-        
-        # 尝试加载基础模型
+    # 设备设置
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"模型加载使用设备: {device}")
+    
+    # 加载文本专用模型
+    text_only_model = None
+    if os.path.exists(config.TEXT_MODEL_PATH):
+        print(f"找到文本专用模型文件，开始加载：{config.TEXT_MODEL_PATH}")
         try:
-            ensemble_model.load_pretrained_models(base_model_paths)
-            model = ensemble_model
-            using_ensemble = True
-            print("成功加载集成模型和所有基础模型")
+            # 先检查文件完整性
+            model_file_size = os.path.getsize(config.TEXT_MODEL_PATH)
+            print(f"模型文件大小: {model_file_size/1024/1024:.2f} MB")
+            
+            text_only_model = TextOnlySpammerDetectionModel(config)
+            # 使用安全加载模式，加载时指定map_location
+            try:
+                checkpoint = torch.load(config.TEXT_MODEL_PATH, map_location=device)
+            except RuntimeError as e:
+                if "storage has wrong size" in str(e) or "unexpected EOF" in str(e):
+                    print(f"模型文件可能损坏: {str(e)}")
+                    raise
+                raise
+                
+            text_only_model.load_state_dict(checkpoint['model_state_dict'])
+            text_only_model = text_only_model.to(device)
+            text_only_model.eval()
+            print("文本专用模型加载成功")
         except Exception as e:
-            print(f"集成模型加载失败，回退到基础模型: {e}")
-            using_ensemble = False
+            print(f"加载文本专用模型时出错: {str(e)}")
+            traceback.print_exc()
+            text_only_model = None
+    else:
+        print(f"警告: 文本专用模型文件 {config.TEXT_MODEL_PATH} 不存在，纯文本分析将使用通用模型")
+
+    # 优先加载集成模型，如果存在
+    using_ensemble = False
+    if os.path.exists(config.ENSEMBLE_MODEL_PATH):
+        print(f"加载集成模型：{config.ENSEMBLE_MODEL_PATH}")
+        try:
+            checkpoint = torch.load(config.ENSEMBLE_MODEL_PATH, map_location=device)
+            
+            # 加载集成模型所需的基础模型路径
+            base_model_paths = checkpoint.get('base_model_paths', [])
+            if not base_model_paths:
+                # 如果没有保存基础模型路径，尝试查找变体目录下的模型
+                variant_dir = os.path.join(config.MODEL_PATH, 'variants')
+                if os.path.exists(variant_dir):
+                    base_model_paths = [
+                        os.path.join(variant_dir, f)
+                        for f in os.listdir(variant_dir)
+                        if f.endswith('_best.pt') or f.endswith('_final.pt')
+                    ][:4]  # 最多使用4个基础模型
+            
+            if base_model_paths:
+                # 创建并加载集成模型
+                from models.ensemble_model import EnsembleModel
+                ensemble_model = EnsembleModel(config, device)
+                ensemble_model.load_state_dict(checkpoint['model_state_dict'])
+                
+                # 尝试加载基础模型
+                try:
+                    ensemble_model.load_pretrained_models(base_model_paths)
+                    model = ensemble_model
+                    using_ensemble = True
+                    print("成功加载集成模型和所有基础模型")
+                except Exception as e:
+                    print(f"集成模型加载失败，回退到基础模型: {e}")
+                    # 回退到基础模型
+                    model = MultiViewSpammerDetectionModel(config)
+                    if os.path.exists(config.BASE_MODEL_PATH):
+                        checkpoint = torch.load(config.BASE_MODEL_PATH, map_location=device)
+                        model.load_state_dict(checkpoint['model_state_dict'])
+                        print(f"已回退并加载基础模型: {config.BASE_MODEL_PATH}")
+            else:
+                # 如果没有基础模型路径，使用基础模型
+                model = MultiViewSpammerDetectionModel(config)
+                if os.path.exists(config.BASE_MODEL_PATH):
+                    checkpoint = torch.load(config.BASE_MODEL_PATH, map_location=device)
+                    model.load_state_dict(checkpoint['model_state_dict'])
+                    print(f"已加载基础模型: {config.BASE_MODEL_PATH}")
+        except Exception as e:
+            print(f"集成模型加载失败: {e}")
+            traceback.print_exc()
             # 回退到基础模型
             model = MultiViewSpammerDetectionModel(config)
-            if os.path.exists(base_model_path):
-                checkpoint = torch.load(base_model_path, map_location=device)
-                model.load_state_dict(checkpoint['model_state_dict'])
-                print(f"已回退并加载基础模型: {base_model_path}")
+            if os.path.exists(config.BASE_MODEL_PATH):
+                try:
+                    checkpoint = torch.load(config.BASE_MODEL_PATH, map_location=device)
+                    model.load_state_dict(checkpoint['model_state_dict'])
+                    print(f"已回退并加载基础模型: {config.BASE_MODEL_PATH}")
+                except Exception as e:
+                    print(f"基础模型加载也失败: {e}")
+                    # 不抛出异常，继续运行，但模型将无法使用
     else:
-        # 如果没有基础模型路径，使用基础模型
-        using_ensemble = False
+        # 使用基础模型
         model = MultiViewSpammerDetectionModel(config)
-        if os.path.exists(base_model_path):
-            checkpoint = torch.load(base_model_path, map_location=device)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"已加载基础模型: {base_model_path}")
-else:
-    # 使用基础模型
-    using_ensemble = False
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = MultiViewSpammerDetectionModel(config)
-    if os.path.exists(base_model_path):
-        checkpoint = torch.load(base_model_path, map_location=device)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print(f"已加载基础模型: {base_model_path}")
-    else:
-        print(f"警告: 模型文件 {base_model_path} 不存在, 请先训练模型")
+        if os.path.exists(config.BASE_MODEL_PATH):
+            try:
+                checkpoint = torch.load(config.BASE_MODEL_PATH, map_location=device)
+                model.load_state_dict(checkpoint['model_state_dict'])
+                print(f"已加载基础模型: {config.BASE_MODEL_PATH}")
+            except Exception as e:
+                print(f"基础模型加载失败: {e}")
+                # 不抛出异常，继续运行，但模型将无法使用
+        else:
+            print(f"警告: 模型文件 {config.BASE_MODEL_PATH} 不存在, 请先训练模型")
 
-# 将模型设置为评估模式
-model = model.to(device)
-model.eval()
+    # 将模型设置为评估模式
+    if 'model' in locals():
+        model = model.to(device)
+        model.eval()
+        return True
+    return False
+
+# 在加载数据处理器之前设置编码一致性环境变量
+os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # 加载tokenizer
 tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME)
 
-# 加载数据处理器
-data_processor = WeiboDataProcessor(config)
-data_processor.load_data()
-data_processor.prepare_features()
+# 加载数据处理器并添加编码错误处理
+try:
+    data_processor = WeiboDataProcessor(config)
+    data_processor.load_data()
+    data_processor.prepare_features()
+    print(f"成功加载数据 - 用户数: {len(data_processor.user_df)}, 微博数: {len(data_processor.weibo_df)}")
+except UnicodeDecodeError as e:
+    print(f"数据加载过程中出现编码错误: {e}")
+    print("尝试使用不同编码重新加载...")
+    # 这里可以添加备用编码尝试逻辑
+    raise
 
 # 准备网络分析器
 # 关系数据路径，如果文件存在则加载
-relation_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data/relation.csv')
+relation_path = get_platform_path(['data', 'relation.csv'])
 relation_df = None
 if os.path.exists(relation_path):
     relation_df = pd.read_csv(relation_path)
@@ -756,29 +835,80 @@ def network_stats():
     except Exception as e:
         return jsonify({'error': str(e)})
 
-# 在应用启动前添加一个简单的文本模型测试
-if text_only_model is not None:
-    try:
-        print("测试文本专用模型...")
-        test_text = "这是一个测试文本"
-        encoded = tokenizer.encode_plus(
-            test_text,
-            max_length=config.MAX_LEN,
-            padding='max_length',
-            truncation=True,
-            return_tensors='pt'
-        )
-        with torch.no_grad():
-            input_ids = encoded['input_ids'].to(device)
-            attention_mask = encoded['attention_mask'].to(device)
-            outputs = text_only_model(input_ids, attention_mask)
-            probs = torch.softmax(outputs, dim=1)
-        print("文本模型测试成功!")
-    except Exception as e:
-        print(f"文本模型测试失败: {str(e)}")
-        text_only_model = None
+def check_environment():
+    """检查运行环境并输出诊断信息"""
+    print("\n====== 环境诊断 ======")
+    print(f"操作系统: {platform.system()} {platform.release()}")
+    print(f"Python版本: {platform.python_version()}")
+    print(f"PyTorch版本: {torch.__version__}")
+    print(f"CUDA是否可用: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"CUDA版本: {torch.version.cuda}")
+        print(f"GPU设备: {torch.cuda.get_device_name(0)}")
+    print(f"当前工作目录: {os.getcwd()}")
+    print(f"项目根目录: {project_root}")
+    print("=====================\n")
 
+# 在__main__部分之前添加参数解析
+def parse_args():
+    parser = argparse.ArgumentParser(description='水军检测系统')
+    parser.add_argument('--min_users', type=int, default=20, 
+                        help='最小训练用户数，低于此值将使用重复采样 (默认: 20)')
+    parser.add_argument('--force_balance', action='store_true', 
+                        help='强制平衡正负样本数量')
+    parser.add_argument('--port', type=int, default=5003,
+                        help='Web服务端口 (默认: 5003)')
+    return parser.parse_args()
+
+# 修改主函数部分
 if __name__ == '__main__':
-    # 确保static/images目录存在
+    args = parse_args()
+    
+    # 加载配置
+    config = Config()
+    
+    # 将命令行参数应用到配置
+    if args.min_users:
+        config.MIN_TRAINING_USERS = args.min_users
+    config.FORCE_BALANCE_SAMPLING = args.force_balance
+    
+    print(f"使用最小训练用户数: {config.MIN_TRAINING_USERS}")
+    print(f"强制平衡采样: {config.FORCE_BALANCE_SAMPLING}")
+    
+    check_environment()
+    
+    # 确保目录存在
     os.makedirs('web/static/images', exist_ok=True)
-    app.run(host='0.0.0.0', port=5003, debug=True) 
+    os.makedirs('models/saved/ensemble', exist_ok=True)
+    os.makedirs('models/saved/variants', exist_ok=True)
+    
+    # 加载模型
+    models_loaded = load_models(config)
+    
+    # 在模型加载后测试文本模型
+    if text_only_model is not None:
+        try:
+            print("测试文本专用模型...")
+            test_text = "这是一个测试文本"
+            encoded = tokenizer.encode_plus(
+                test_text,
+                max_length=config.MAX_LEN,
+                padding='max_length',
+                truncation=True,
+                return_tensors='pt'
+            )
+            with torch.no_grad():
+                input_ids = encoded['input_ids'].to(device)
+                attention_mask = encoded['attention_mask'].to(device)
+                outputs = text_only_model(input_ids, attention_mask)
+                probs = torch.softmax(outputs, dim=1)
+            print("文本模型测试成功!")
+        except Exception as e:
+            print(f"文本模型测试失败: {str(e)}")
+            text_only_model = None
+    
+    if not models_loaded:
+        print("警告: 模型加载失败，应用将使用有限功能运行")
+    
+    # 启动Web服务
+    app.run(host='0.0.0.0', port=args.port, debug=True) 

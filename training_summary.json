@@ -1,7 +1,7 @@
 {
-    "start_time": "2025-03-17 16:15:14.044544",
-    "end_time": "2025-03-17 16:45:21.156435",
-    "duration": "0:30:07.111891",
+    "start_time": "2025-03-22 19:56:07.689302",
+    "end_time": "2025-03-22 20:24:59.338530",
+    "duration": "0:28:51.649228",
     "device": "cuda",
     "best_models": {
         "default": "models/saved/variants/default_best.pt",

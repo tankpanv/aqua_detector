@@ -12,6 +12,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import sys
+import argparse
+import platform
+import traceback
 
 # 添加项目根目录到系统路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -20,20 +23,69 @@ from config import Config
 from models.text_only_model import TextOnlySpammerDetectionModel
 from processors.data_processor import WeiboDataProcessor
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='训练文本专用模型')
+    parser.add_argument('--gpu', action='store_true', help='强制使用GPU训练（如果可用）')
+    parser.add_argument('--gpu_id', type=int, default=0, help='指定使用的GPU ID（多GPU系统）')
+    parser.add_argument('--min_users', type=int, help='设置最小训练用户数量')
+    parser.add_argument('--batch_size', type=int, help='设置批处理大小')
+    parser.add_argument('--force_balance', action='store_true', help='强制平衡正负样本')
+    return parser.parse_args()
+
 def train_text_model():
-    """训练仅基于文本的水军检测模型"""
-    
+    """训练仅基于文本的水军检测模型，确保跨平台兼容"""
+    args = parse_args()
     print("开始训练文本专用模型...")
+    
+    # 检查环境
+    print(f"当前操作系统: {platform.system()}")
+    print(f"Python版本: {platform.python_version()}")
+    print(f"当前工作目录: {os.getcwd()}")
     
     # 加载配置
     config = Config()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # 设备选择，确保跨平台一致性
+    if args.gpu:
+        if torch.cuda.is_available():
+            device = torch.device(f"cuda:{args.gpu_id}")
+            print(f"使用GPU训练: {torch.cuda.get_device_name(args.gpu_id)}")
+            # 添加内存优化
+            if 'Windows' in platform.system():
+                # Windows上的CUDA内存优化
+                print("在Windows环境下应用CUDA内存优化设置")
+                torch.cuda.empty_cache()
+        else:
+            print("警告: 请求使用GPU但CUDA不可用，回退到CPU")
+            device = torch.device("cpu")
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            print(f"自动选择GPU: {torch.cuda.get_device_name(0)}")
+    
     print(f"使用设备: {device}")
     
+    # 确保输出目录存在
+    os.makedirs(os.path.dirname(config.TEXT_MODEL_PATH), exist_ok=True)
+    
+    # 将命令行参数应用到配置
+    if args.min_users:
+        config.MIN_TRAINING_USERS = args.min_users
+        print(f"使用自定义最小训练用户数: {config.MIN_TRAINING_USERS}")
+    
+    if args.batch_size:
+        config.BATCH_SIZE = args.batch_size
+        print(f"使用自定义批处理大小: {config.BATCH_SIZE}")
+    
     # 加载数据处理器
-    data_processor = WeiboDataProcessor(config)
-    data_processor.load_data()
-    data_processor.prepare_features()
+    try:
+        data_processor = WeiboDataProcessor(config)
+        data_processor.load_data()
+        data_processor.prepare_features()
+    except Exception as e:
+        print(f"数据加载失败: {str(e)}")
+        traceback.print_exc()
+        return False
     
     # 初始化 tokenizer
     tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME)
