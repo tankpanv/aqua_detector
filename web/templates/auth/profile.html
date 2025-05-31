@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% set title = "个人资料" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-circle me-2"></i>个人资料
+                </h5>
+                <a href="{{ url_for('edit_profile') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-edit me-1"></i>编辑资料
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>用户名:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user['username'] }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>邮箱:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user['email'] }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>真实姓名:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user['real_name'] or '未设置' }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>手机号:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user['phone'] or '未设置' }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>所属机构:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user['organization'] or '未设置' }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>注册时间:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user['created_at'] or '未知' }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>最后登录:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user['last_login'] or '从未登录' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>账户安全
+                </h5>
+            </div>
+            <div class="card-body">
+                <a href="{{ url_for('change_password') }}" class="btn btn-warning">
+                    <i class="fas fa-key me-1"></i>修改密码
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>使用统计
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-3">
+                    <h3 class="text-primary">{{ user['detection_count'] or 0 }}</h3>
+                    <p class="text-muted mb-0">总检测次数</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted">最后检测时间</h6>
+                    <p class="mb-0">
+                        {{ user['last_detection'] or '从未检测' }}
+                    </p>
+                </div>
+                
+                <hr>
+                
+                <a href="{{ url_for('detection_history') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-history me-1"></i>查看检测历史
+                </a>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>快速操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i>开始检测
+                    </a>
+                    <a href="{{ url_for('network_analysis') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-network-wired me-1"></i>网络分析
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

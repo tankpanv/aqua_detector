@@ -124,7 +124,12 @@ class EnsembleModel(nn.Module):
         return calibrated_logits
     
     def predict_with_calibration(self, input_ids, attention_mask, user_features):
-        """使用校准后的置信度进行预测"""
+        """使用校准的预测方法，确保模型处于评估模式"""
+        # 确保模型及其子模型处于评估模式
+        self.eval()
+        for model in self.models:
+            model.eval()
+        
         with torch.no_grad():
             # 确保所有输入在同一设备上
             device = input_ids.device

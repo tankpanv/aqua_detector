@@ -14,7 +14,20 @@ from config import Config
 class WeiboDataProcessor:
     def __init__(self, config):
         self.config = config
-        self.tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME)
+        try:
+            print("正在加载数据处理器的BERT tokenizer...")
+            self.tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME)
+            print("数据处理器的BERT tokenizer加载成功")
+        except Exception as e:
+            print(f"加载数据处理器的BERT tokenizer失败: {str(e)}")
+            print("尝试使用本地缓存...")
+            try:
+                self.tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME, local_files_only=True)
+                print("从本地缓存加载数据处理器的BERT tokenizer成功")
+            except Exception as e2:
+                print(f"从本地缓存加载也失败: {str(e2)}")
+                print("警告：数据处理器无法加载tokenizer，某些功能可能不可用")
+                self.tokenizer = None
         
     def load_data(self):
         """加载微博数据和用户数据，处理不同平台的编码问题"""

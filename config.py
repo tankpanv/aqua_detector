@@ -70,6 +70,6 @@ class Config:
     RANDOM_SEED = 42
     
     # 最小训练用户数参数
-    MIN_TRAINING_USERS = 700  # 设置最小训练用户数
+    MIN_TRAINING_USERS = 20  # 设置最小训练用户数
     # 如果实际用户数小于此值，则启用重复采样
     FORCE_BALANCE_SAMPLING = True  # 是否强制平衡正负样本 

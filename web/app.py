@@ -9,7 +9,13 @@ import json
 import numpy as np
 import traceback
 import argparse
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from datetime import datetime
+from urllib.parse import urlparse
+
+# 用户认证相关导入
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 # 操作系统检测
 SYSTEM_TYPE = platform.system()  # 'Windows', 'Linux', 或 'Darwin' (macOS)
@@ -58,13 +64,35 @@ from models.ensemble_model import create_ensemble_from_checkpoints
 
 app = Flask(__name__)
 
+# 配置密钥和数据库
+app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///aqua_detector.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# 初始化扩展
+from web.models import db, User, DetectionHistory
+db.init_app(app)
+
+# 初始化登录管理器
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = '请先登录后访问此页面'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 # 确保分析图像存在
 print("检查并生成网络分析图像...")
 ensure_dirs()  # 确保目录存在
-success = generate_real_analysis_images()  # 尝试使用真实数据生成图像
-if not success:
-    print("使用示例数据生成图像...")
-    generate_sample_images()  # 使用示例数据生成图像
+# 注释掉耗时的图像生成，避免启动卡住
+# success = generate_real_analysis_images()  # 尝试使用真实数据生成图像
+# if not success:
+#     print("使用示例数据生成图像...")
+#     generate_sample_images()  # 使用示例数据生成图像
+print("跳过图像生成以加快启动速度")
 
 # 加载配置
 config = Config()
@@ -105,121 +133,103 @@ def load_models(config):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"模型加载使用设备: {device}")
     
+    # 确保模型目录存在
+    os.makedirs('models/saved', exist_ok=True)
+    os.makedirs('models/saved/ensemble', exist_ok=True)
+    os.makedirs('models/saved/variants', exist_ok=True)
+    
+    models_loaded = False
+    
     # 加载文本专用模型
-    text_only_model = None
     if os.path.exists(config.TEXT_MODEL_PATH):
         print(f"找到文本专用模型文件，开始加载：{config.TEXT_MODEL_PATH}")
         try:
-            # 先检查文件完整性
-            model_file_size = os.path.getsize(config.TEXT_MODEL_PATH)
-            print(f"模型文件大小: {model_file_size/1024/1024:.2f} MB")
-            
             text_only_model = TextOnlySpammerDetectionModel(config)
-            # 使用安全加载模式，加载时指定map_location
-            try:
-                checkpoint = torch.load(config.TEXT_MODEL_PATH, map_location=device)
-            except RuntimeError as e:
-                if "storage has wrong size" in str(e) or "unexpected EOF" in str(e):
-                    print(f"模型文件可能损坏: {str(e)}")
-                    raise
-                raise
-                
+            checkpoint = torch.load(config.TEXT_MODEL_PATH, map_location=device)
             text_only_model.load_state_dict(checkpoint['model_state_dict'])
             text_only_model = text_only_model.to(device)
             text_only_model.eval()
             print("文本专用模型加载成功")
+            models_loaded = True
         except Exception as e:
             print(f"加载文本专用模型时出错: {str(e)}")
-            traceback.print_exc()
             text_only_model = None
     else:
-        print(f"警告: 文本专用模型文件 {config.TEXT_MODEL_PATH} 不存在，纯文本分析将使用通用模型")
+        print(f"文本专用模型文件不存在: {config.TEXT_MODEL_PATH}")
+        text_only_model = None
 
-    # 优先加载集成模型，如果存在
-    using_ensemble = False
+    # 尝试加载集成模型
     if os.path.exists(config.ENSEMBLE_MODEL_PATH):
-        print(f"加载集成模型：{config.ENSEMBLE_MODEL_PATH}")
+        print(f"找到集成模型，开始加载：{config.ENSEMBLE_MODEL_PATH}")
         try:
             checkpoint = torch.load(config.ENSEMBLE_MODEL_PATH, map_location=device)
+            from models.ensemble_model import EnsembleModel
             
-            # 加载集成模型所需的基础模型路径
-            base_model_paths = checkpoint.get('base_model_paths', [])
-            if not base_model_paths:
-                # 如果没有保存基础模型路径，尝试查找变体目录下的模型
-                variant_dir = os.path.join(config.MODEL_PATH, 'variants')
-                if os.path.exists(variant_dir):
-                    base_model_paths = [
-                        os.path.join(variant_dir, f)
-                        for f in os.listdir(variant_dir)
-                        if f.endswith('_best.pt') or f.endswith('_final.pt')
-                    ][:4]  # 最多使用4个基础模型
+            # 创建集成模型实例
+            ensemble_model = EnsembleModel(config, device)
+            ensemble_model.load_state_dict(checkpoint['model_state_dict'])
+            ensemble_model = ensemble_model.to(device)
+            ensemble_model.eval()
             
-            if base_model_paths:
-                # 创建并加载集成模型
-                from models.ensemble_model import EnsembleModel
-                ensemble_model = EnsembleModel(config, device)
-                ensemble_model.load_state_dict(checkpoint['model_state_dict'])
-                
-                # 尝试加载基础模型
-                try:
-                    ensemble_model.load_pretrained_models(base_model_paths)
-                    model = ensemble_model
-                    using_ensemble = True
-                    print("成功加载集成模型和所有基础模型")
-                except Exception as e:
-                    print(f"集成模型加载失败，回退到基础模型: {e}")
-                    # 回退到基础模型
-                    model = MultiViewSpammerDetectionModel(config)
-                    if os.path.exists(config.BASE_MODEL_PATH):
-                        checkpoint = torch.load(config.BASE_MODEL_PATH, map_location=device)
-                        model.load_state_dict(checkpoint['model_state_dict'])
-                        print(f"已回退并加载基础模型: {config.BASE_MODEL_PATH}")
-            else:
-                # 如果没有基础模型路径，使用基础模型
-                model = MultiViewSpammerDetectionModel(config)
-                if os.path.exists(config.BASE_MODEL_PATH):
-                    checkpoint = torch.load(config.BASE_MODEL_PATH, map_location=device)
-                    model.load_state_dict(checkpoint['model_state_dict'])
-                    print(f"已加载基础模型: {config.BASE_MODEL_PATH}")
+            model = ensemble_model
+            using_ensemble = True
+            print("集成模型加载成功")
+            models_loaded = True
         except Exception as e:
-            print(f"集成模型加载失败: {e}")
-            traceback.print_exc()
-            # 回退到基础模型
+            print(f"加载集成模型失败: {str(e)}")
+            using_ensemble = False
+            
+    # 如果集成模型加载失败，尝试加载基础模型
+    if not using_ensemble:
+        print("尝试加载基础模型...")
+        try:
             model = MultiViewSpammerDetectionModel(config)
             if os.path.exists(config.BASE_MODEL_PATH):
-                try:
-                    checkpoint = torch.load(config.BASE_MODEL_PATH, map_location=device)
-                    model.load_state_dict(checkpoint['model_state_dict'])
-                    print(f"已回退并加载基础模型: {config.BASE_MODEL_PATH}")
-                except Exception as e:
-                    print(f"基础模型加载也失败: {e}")
-                    # 不抛出异常，继续运行，但模型将无法使用
-    else:
-        # 使用基础模型
-        model = MultiViewSpammerDetectionModel(config)
-        if os.path.exists(config.BASE_MODEL_PATH):
-            try:
                 checkpoint = torch.load(config.BASE_MODEL_PATH, map_location=device)
                 model.load_state_dict(checkpoint['model_state_dict'])
-                print(f"已加载基础模型: {config.BASE_MODEL_PATH}")
-            except Exception as e:
-                print(f"基础模型加载失败: {e}")
-                # 不抛出异常，继续运行，但模型将无法使用
-        else:
-            print(f"警告: 模型文件 {config.BASE_MODEL_PATH} 不存在, 请先训练模型")
-
-    # 将模型设置为评估模式
-    if 'model' in locals():
-        model = model.to(device)
+                model = model.to(device)
+                model.eval()
+                print(f"基础模型加载成功: {config.BASE_MODEL_PATH}")
+                models_loaded = True
+            else:
+                print(f"基础模型文件不存在: {config.BASE_MODEL_PATH}")
+                model = None
+        except Exception as e:
+            print(f"加载基础模型失败: {str(e)}")
+            model = None
+    
+    # 确保所有模型都处于评估模式
+    if model is not None:
         model.eval()
-        return True
-    return False
+        if using_ensemble and hasattr(model, 'models'):
+            for sub_model in model.models:
+                sub_model.eval()
+    
+    if not models_loaded:
+        print("警告：所有模型加载均失败，应用将使用有限功能运行")
+        return False
+        
+    return True
 
 # 在加载数据处理器之前设置编码一致性环境变量
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # 加载tokenizer
-tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME)
+try:
+    print("正在加载BERT tokenizer...")
+    tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME)
+    print("BERT tokenizer加载成功")
+except Exception as e:
+    print(f"加载BERT tokenizer失败: {str(e)}")
+    print("尝试使用本地缓存或备用方案...")
+    try:
+        # 尝试从本地缓存加载
+        tokenizer = BertTokenizer.from_pretrained(config.BERT_MODEL_NAME, local_files_only=True)
+        print("从本地缓存加载BERT tokenizer成功")
+    except Exception as e2:
+        print(f"从本地缓存加载也失败: {str(e2)}")
+        print("警告：无法加载tokenizer，某些功能可能不可用")
+        tokenizer = None
 
 # 加载数据处理器并添加编码错误处理
 try:
@@ -310,11 +320,144 @@ def analyze_suspicious_behavior(user_weibos, user_data=None):
     
     return suspicious_indicators
 
+def save_detection_history(user_id, detection_type, input_content, result):
+    """保存检测历史记录"""
+    try:
+        history = DetectionHistory(
+            user_id=user_id,
+            detection_type=detection_type,
+            input_content=input_content,
+            result=result
+        )
+        db.session.add(history)
+        
+        # 更新用户检测次数
+        current_user.increment_detection_count()
+        
+        db.session.commit()
+    except Exception as e:
+        print(f"保存检测历史失败: {str(e)}")
+        db.session.rollback()
+
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
+# 用户认证路由
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    from web.forms import LoginForm
+    form = LoginForm()
+    
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=form.username.data).first()
+        if user is None or not user.check_password(form.password.data):
+            flash('用户名或密码错误', 'error')
+            return redirect(url_for('login'))
+        
+        # 更新最后登录时间
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+        
+        login_user(user, remember=form.remember_me.data)
+        next_page = request.args.get('next')
+        if not next_page or urlparse(next_page).netloc != '':
+            next_page = url_for('index')
+        return redirect(next_page)
+    
+    return render_template('auth/login.html', form=form)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    from web.forms import RegistrationForm
+    form = RegistrationForm()
+    
+    if form.validate_on_submit():
+        user = User(
+            username=form.username.data,
+            email=form.email.data,
+            real_name=form.real_name.data,
+            phone=form.phone.data,
+            organization=form.organization.data
+        )
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('恭喜您！注册成功，请使用新账户登录。', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('auth/register.html', form=form)
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template('auth/profile.html', user=current_user)
+
+@app.route('/edit_profile', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    from web.forms import ProfileForm
+    form = ProfileForm()
+    
+    if form.validate_on_submit():
+        current_user.real_name = form.real_name.data
+        current_user.phone = form.phone.data
+        current_user.organization = form.organization.data
+        db.session.commit()
+        flash('个人资料已更新', 'success')
+        return redirect(url_for('profile'))
+    elif request.method == 'GET':
+        form.real_name.data = current_user.real_name
+        form.phone.data = current_user.phone
+        form.organization.data = current_user.organization
+    
+    return render_template('auth/edit_profile.html', form=form)
+
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    from web.forms import ChangePasswordForm
+    form = ChangePasswordForm()
+    
+    if form.validate_on_submit():
+        if current_user.check_password(form.old_password.data):
+            current_user.set_password(form.password.data)
+            db.session.commit()
+            flash('密码已成功修改', 'success')
+            return redirect(url_for('profile'))
+        else:
+            flash('当前密码错误', 'error')
+    
+    return render_template('auth/change_password.html', form=form)
+
+@app.route('/history')
+@login_required
+def detection_history():
+    """查看检测历史"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    history = DetectionHistory.query.filter_by(user_id=current_user.id)\
+        .order_by(DetectionHistory.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('auth/history.html', history=history)
+
 @app.route('/detect', methods=['POST'])
+@login_required
 def detect():
     data = request.get_json()
     print(f"收到请求数据: {data}")
@@ -341,12 +484,16 @@ def detect():
                 return_tensors='pt'
             )
             
+            # 从encoded中获取input_ids和attention_mask
+            input_ids = encoded['input_ids']
+            attention_mask = encoded['attention_mask']
+            
             # 如果存在文本专用模型，则优先使用
             if text_only_model is not None:
                 print("使用文本专用模型进行预测")
                 with torch.no_grad():
-                    input_ids = encoded['input_ids'].to(device)
-                    attention_mask = encoded['attention_mask'].to(device)
+                    input_ids = input_ids.to(device)
+                    attention_mask = attention_mask.to(device)
                     
                     # 使用文本专用模型预测
                     outputs = text_only_model(input_ids, attention_mask)
@@ -406,6 +553,7 @@ def detect():
                             'error_detail': str(e)
                         }
                     
+                    save_detection_history(user_id, '文本分析', text_content, result)
                     return jsonify(result)
             
             # 如果没有文本专用模型，使用通用模型+默认用户特征
@@ -461,10 +609,23 @@ def detect():
             # 合并特征
             user_feature_vector = torch.cat([behavior_features, default_time_features], dim=1).to(device)
             
+            # 如果只有一个样本，复制它以创建批次
+            if len(user_feature_vector) == 1:
+                print("检测到单样本批次，复制样本以确保BatchNorm正常工作...")
+                # 复制输入特征
+                input_ids = torch.cat([input_ids, input_ids], dim=0)
+                attention_mask = torch.cat([attention_mask, attention_mask], dim=0)
+                user_feature_vector = torch.cat([user_feature_vector, user_feature_vector], dim=0)
+                
+                # 创建批处理标记，用于稍后只保留第一个预测结果
+                is_duplicated_batch = True
+            else:
+                is_duplicated_batch = False
+            
             # 预测
             with torch.no_grad():
-                input_ids = encoded['input_ids'].to(device)
-                attention_mask = encoded['attention_mask'].to(device)
+                input_ids = input_ids.to(device)
+                attention_mask = attention_mask.to(device)
                 
                 # 根据使用的模型类型选择预测方法
                 if using_ensemble:
@@ -473,14 +634,19 @@ def detect():
                         input_ids, attention_mask, user_feature_vector
                     )
                     
-                    prob_spammer = result['raw_probs'][0][1].item()  # 获取水军类别的概率
-                    pred_class = result['prediction'].item()
+                    # 先检查是否使用了复制批处理，如果是，则只取第一个元素
+                    if len(input_ids) > 1:  # 如果批处理大小大于1，说明有复制
+                        prob_spammer = result['raw_probs'][0][1].item()
+                        pred_class = result['prediction'][0].item()
+                        raw_confidence = result['confidence'][0].item()
+                        agreement = result['agreement'][0].item()
+                    else:
+                        prob_spammer = result['raw_probs'][0][1].item()
+                        pred_class = result['prediction'].item()
+                        raw_confidence = result['confidence'].item()
+                        agreement = result['agreement'].item()
                     
-                    # 使用模型一致性来增加置信度差异
-                    raw_confidence = result['confidence'].item()
-                    agreement = result['agreement'].item()
-                    
-                    # 添加防护措施确保计算不会产生NaN
+                    # 应用校准因子，使置信度更加两极化
                     if not torch.is_tensor(raw_confidence):
                         raw_confidence = float(raw_confidence)
                     if not torch.is_tensor(agreement):
@@ -503,7 +669,7 @@ def detect():
                     
                     # 再次确保不是NaN
                     if np.isnan(confidence):
-                        confidence = 0.5  # 如果仍然是NaN，设为默认值
+                        confidence = 0.5
                     
                     # 模型一致性指标作为额外信息
                     model_agreement = agreement
@@ -511,13 +677,10 @@ def detect():
                     # 使用基础模型
                     outputs = model(input_ids, attention_mask, user_feature_vector)
                     probabilities = torch.softmax(outputs, dim=1)
-                    prob_spammer = probabilities[0][1].item()  # 获取水军类别的概率
+                    prob_spammer = probabilities[0][1].item()
                     
                     # 使用自定义阈值决定标签
                     pred_class = 1 if prob_spammer > SPAMMER_THRESHOLD else 0
-                    
-                    # 添加详细调试输出
-                    print(f"预测详情 - 水军概率: {prob_spammer:.4f}, 阈值: {SPAMMER_THRESHOLD}, 判定结果: {'水军' if pred_class == 1 else '正常用户'}")
                     
                     # 计算可信度并应用校准
                     raw_confidence = prob_spammer if pred_class == 1 else (1 - prob_spammer)
@@ -526,7 +689,7 @@ def detect():
                     if np.isnan(raw_confidence) or raw_confidence is None:
                         raw_confidence = 0.5
                         
-                    # 应用校准因子，使置信度更加两极化
+                    # 应用校准因子
                     if raw_confidence > 0.5:
                         confidence = 0.5 + (raw_confidence - 0.5) * CONFIDENCE_CALIBRATION
                     else:
@@ -544,7 +707,33 @@ def detect():
                 
                 is_spammer = pred_class == 1
                 
-                # 准备结果
+                # 然后在预测后检查是否有复制批次并只保留第一个样本的结果
+                if is_duplicated_batch:
+                    # 如果是集成模型
+                    if using_ensemble:
+                        # 只保留第一个样本的结果
+                        prob_spammer = result['raw_probs'][0][1].item()
+                        pred_class = result['prediction'][0].item()
+                        raw_confidence = result['confidence'][0].item()
+                        agreement = result['agreement'][0].item()
+                    else:
+                        # 基础模型只保留第一个样本的结果
+                        prob_spammer = probabilities[0][1].item()
+                
+                # 分析可疑行为
+                suspicious_indicators = analyze_suspicious_behavior(user_weibos, user_data)
+                
+                # 集成多重证据进行判断
+                is_spammer = pred_class == 1
+                
+                # 如果可疑程度较高但模型预测为普通用户，可能需要提高警惕
+                if suspicious_indicators.get('可疑程度', 0) > 0.5 and not is_spammer:
+                    warning_message = "该用户展现出一些可疑行为，请注意关注。"
+                else:
+                    warning_message = None
+                    
+                # 构建结果
+                # 确保所有值都是可序列化的
                 try:
                     # 处理置信度，确保是有效数值
                     if np.isnan(confidence):
@@ -559,23 +748,41 @@ def detect():
                     
                     # 创建结果字典
                     result = {
-                        'text': text_content[:100] + "..." if len(text_content) > 100 else text_content,
+                        'user_id': str(user_id),
                         'is_spammer': bool(is_spammer),
                         'confidence': confidence_percent,
-                        'warning': "仅基于文本内容的预测，可能不如完整用户分析准确" if confidence < 0.7 else None,
+                        'suspicious_score': float(suspicious_indicators.get('可疑程度', 0)),
+                        'suspicious_indicators': {
+                            k: float(v) if isinstance(v, (int, float)) else v 
+                            for k, v in suspicious_indicators.items() 
+                            if not k.endswith('_异常') and not isinstance(v, np.ndarray)
+                        },
+                        'warning': warning_message,
                         'model_type': 'ensemble' if using_ensemble else 'base',
                         'model_agreement': model_agreement
                     }
+                    
+                    # 添加用户信息
+                    if user_data is not None:
+                        result['user_info'] = {
+                            'nickname': str(user_data['昵称']),
+                            'gender': str(user_data['性别']),
+                            'location': str(user_data['所在地']),
+                            'followers': int(user_data['粉丝数']),
+                            'following': int(user_data['关注数']),
+                            'posts': int(user_data['微博数'])
+                        }
                 except Exception as e:
                     print(f"构建结果时出错: {str(e)}")
                     # 提供备用简化结果
                     result = {
-                        'text': text_content[:50] + "..." if len(text_content) > 50 else text_content,
+                        'user_id': str(user_id),
                         'is_spammer': bool(is_spammer),
                         'confidence': 50,  # 默认置信度50%
                         'error_detail': str(e)
                     }
-                
+
+                save_detection_history(user_id, '文本分析', text_content, result)
                 return jsonify(result)
                 
         except Exception as e:
@@ -595,127 +802,156 @@ def detect():
             # 获取匹配的用户数据
             user_data = data_processor.user_df[data_processor.user_df['id'].astype(str) == user_id].iloc[0]
             user_weibos = data_processor.weibo_df[data_processor.weibo_df['用户id'].astype(str) == user_id]
+        
+        # 准备特征
+        texts = user_weibos['内容'].apply(data_processor.preprocess_text).tolist()[:5]
+        combined_text = " ".join(texts)
+        
+        # 首先确保文本编码得到input_ids和attention_mask
+        encoded = tokenizer.encode_plus(
+            combined_text,
+            max_length=config.MAX_LEN,
+            padding='max_length',
+            truncation=True,
+            return_tensors='pt'
+        )
+        
+        # 从encoded中获取input_ids和attention_mask
+        input_ids = encoded['input_ids']
+        attention_mask = encoded['attention_mask']
+        
+        # 提取用户行为特征
+        behavior_features = torch.tensor([
+            len(user_weibos),  # 发帖数
+            user_weibos['评论数'].mean(),
+            user_weibos['转发数'].mean(),
+            user_weibos['点赞数'].mean(),
+            user_weibos['长度'].mean(),
+            user_weibos['是否原创'].mean() if '是否原创' in user_weibos.columns else 0.5,
+            user_weibos['是否含url'].mean() if '是否含url' in user_weibos.columns else 0.0
+        ], dtype=torch.float).reshape(1, -1)
+        
+        # 时间特征
+        try:
+            hour_counts = user_weibos['发布时间'].apply(
+                lambda x: data_processor.extract_time_features(x)['hour']
+            ).value_counts().reindex(range(24), fill_value=0).values
             
-            # 准备特征
-            texts = user_weibos['内容'].apply(data_processor.preprocess_text).tolist()[:5]
-            combined_text = " ".join(texts)
+            hour_dist = hour_counts / hour_counts.sum() if hour_counts.sum() > 0 else hour_counts
+        except:
+            # 如果时间特征提取失败，使用均匀分布
+            hour_dist = np.ones(24) / 24
             
-            encoded = tokenizer.encode_plus(
-                combined_text,
-                max_length=config.MAX_LEN,
-                padding='max_length',
-                truncation=True,
-                return_tensors='pt'
-            )
+        time_features = torch.tensor(hour_dist, dtype=torch.float).reshape(1, -1)
+        
+        # 合并特征
+        user_feature_vector = torch.cat([behavior_features, time_features], dim=1).to(device)
+        
+        # 在预测前确保模型处于评估模式
+        if model is not None:
+            model.eval()
+            # 对于集成模型，确保所有子模型也是评估模式
+            if using_ensemble and hasattr(model, 'models'):
+                for sub_model in model.models:
+                    sub_model.eval()
+        
+        # 如果只有一个样本，复制它以创建批次
+        if len(user_feature_vector) == 1:
+            print("检测到单样本批次，复制样本以确保BatchNorm正常工作...")
+            # 复制输入特征
+            input_ids = torch.cat([input_ids, input_ids], dim=0)
+            attention_mask = torch.cat([attention_mask, attention_mask], dim=0)
+            user_feature_vector = torch.cat([user_feature_vector, user_feature_vector], dim=0)
             
-            # 提取用户行为特征
-            behavior_features = torch.tensor([
-                len(user_weibos),  # 发帖数
-                user_weibos['评论数'].mean(),
-                user_weibos['转发数'].mean(),
-                user_weibos['点赞数'].mean(),
-                user_weibos['长度'].mean(),
-                user_weibos['是否原创'].mean() if '是否原创' in user_weibos.columns else 0.5,
-                user_weibos['是否含url'].mean() if '是否含url' in user_weibos.columns else 0.0
-            ], dtype=torch.float).reshape(1, -1)
+            # 创建批处理标记，用于稍后只保留第一个预测结果
+            is_duplicated_batch = True
+        else:
+            is_duplicated_batch = False
+        
+        # 预测
+        with torch.no_grad():
+            input_ids = input_ids.to(device)
+            attention_mask = attention_mask.to(device)
             
-            # 时间特征
-            try:
-                hour_counts = user_weibos['发布时间'].apply(
-                    lambda x: data_processor.extract_time_features(x)['hour']
-                ).value_counts().reindex(range(24), fill_value=0).values
+            # 根据使用的模型类型选择预测方法
+            if using_ensemble:
+                # 使用集成模型的校准预测
+                result = model.predict_with_calibration(
+                    input_ids, attention_mask, user_feature_vector
+                )
                 
-                hour_dist = hour_counts / hour_counts.sum() if hour_counts.sum() > 0 else hour_counts
-            except:
-                # 如果时间特征提取失败，使用均匀分布
-                hour_dist = np.ones(24) / 24
-                
-            time_features = torch.tensor(hour_dist, dtype=torch.float).reshape(1, -1)
-            
-            # 合并特征
-            user_feature_vector = torch.cat([behavior_features, time_features], dim=1).to(device)
-            
-            # 预测
-            with torch.no_grad():
-                input_ids = encoded['input_ids'].to(device)
-                attention_mask = encoded['attention_mask'].to(device)
-                
-                # 根据使用的模型类型选择预测方法
-                if using_ensemble:
-                    # 使用集成模型的校准预测
-                    result = model.predict_with_calibration(
-                        input_ids, attention_mask, user_feature_vector
-                    )
-                    
-                    prob_spammer = result['raw_probs'][0][1].item()  # 获取水军类别的概率
+                # 先检查是否使用了复制批处理，如果是，则只取第一个元素
+                if len(input_ids) > 1:  # 如果批处理大小大于1，说明有复制
+                    prob_spammer = result['raw_probs'][0][1].item()
+                    pred_class = result['prediction'][0].item()
+                    raw_confidence = result['confidence'][0].item()
+                    agreement = result['agreement'][0].item()
+                else:
+                    prob_spammer = result['raw_probs'][0][1].item()
                     pred_class = result['prediction'].item()
-                    
-                    # 使用模型一致性来增加置信度差异
                     raw_confidence = result['confidence'].item()
                     agreement = result['agreement'].item()
+                
+                # 应用校准因子，使置信度更加两极化
+                if not torch.is_tensor(raw_confidence):
+                    raw_confidence = float(raw_confidence)
+                if not torch.is_tensor(agreement):
+                    agreement = float(agreement)
                     
-                    # 应用校准因子，使置信度更加两极化
-                    # 添加防护措施确保计算不会产生NaN
-                    if not torch.is_tensor(raw_confidence):
-                        raw_confidence = float(raw_confidence)
-                    if not torch.is_tensor(agreement):
-                        agreement = float(agreement)
-                        
-                    # 确保所有值都是有效数值
-                    if np.isnan(raw_confidence) or raw_confidence is None:
-                        raw_confidence = 0.5
-                    if np.isnan(agreement) or agreement is None:
-                        agreement = 0.5
-                        
-                    # 计算校准后的置信度
-                    if raw_confidence > 0.5:
-                        confidence = 0.5 + (raw_confidence - 0.5) * agreement * CONFIDENCE_CALIBRATION
-                    else:
-                        confidence = 0.5 - (0.5 - raw_confidence) * agreement * CONFIDENCE_CALIBRATION
-                        
-                    # 确保置信度在[0,1]范围内
-                    confidence = max(0.0, min(1.0, confidence))
+                # 确保所有值都是有效数值
+                if np.isnan(raw_confidence) or raw_confidence is None:
+                    raw_confidence = 0.5
+                if np.isnan(agreement) or agreement is None:
+                    agreement = 0.5
                     
-                    # 再次确保不是NaN
-                    if np.isnan(confidence):
-                        confidence = 0.5  # 如果仍然是NaN，设为默认值
-                    
-                    # 模型一致性指标作为额外信息
-                    model_agreement = agreement
+                # 计算校准后的置信度
+                if raw_confidence > 0.5:
+                    confidence = 0.5 + (raw_confidence - 0.5) * agreement * CONFIDENCE_CALIBRATION
                 else:
-                    # 使用基础模型
-                    outputs = model(input_ids, attention_mask, user_feature_vector)
-                    probabilities = torch.softmax(outputs, dim=1)
-                    prob_spammer = probabilities[0][1].item()  # 获取水军类别的概率
+                    confidence = 0.5 - (0.5 - raw_confidence) * agreement * CONFIDENCE_CALIBRATION
                     
-                    # 使用自定义阈值决定标签
-                    pred_class = 1 if prob_spammer > SPAMMER_THRESHOLD else 0
+                # 确保置信度在[0,1]范围内
+                confidence = max(0.0, min(1.0, confidence))
+                
+                # 再次确保不是NaN
+                if np.isnan(confidence):
+                    confidence = 0.5
+                
+                # 模型一致性指标作为额外信息
+                model_agreement = agreement
+            else:
+                # 使用基础模型
+                outputs = model(input_ids, attention_mask, user_feature_vector)
+                probabilities = torch.softmax(outputs, dim=1)
+                prob_spammer = probabilities[0][1].item()
+                
+                # 使用自定义阈值决定标签
+                pred_class = 1 if prob_spammer > SPAMMER_THRESHOLD else 0
+                
+                # 计算可信度并应用校准
+                raw_confidence = prob_spammer if pred_class == 1 else (1 - prob_spammer)
+                
+                # 确保是有效数值
+                if np.isnan(raw_confidence) or raw_confidence is None:
+                    raw_confidence = 0.5
                     
-                    # 添加详细调试输出
-                    print(f"预测详情 - 水军概率: {prob_spammer:.4f}, 阈值: {SPAMMER_THRESHOLD}, 判定结果: {'水军' if pred_class == 1 else '正常用户'}")
-                    
-                    # 计算可信度并应用校准
-                    raw_confidence = prob_spammer if pred_class == 1 else (1 - prob_spammer)
-                    
-                    # 确保是有效数值
-                    if np.isnan(raw_confidence) or raw_confidence is None:
-                        raw_confidence = 0.5
-                        
-                    # 应用校准因子，使置信度更加两极化
-                    if raw_confidence > 0.5:
-                        confidence = 0.5 + (raw_confidence - 0.5) * CONFIDENCE_CALIBRATION
-                    else:
-                        confidence = 0.5 - (0.5 - raw_confidence) * CONFIDENCE_CALIBRATION
-                    
-                    # 确保置信度在[0,1]范围内
-                    confidence = max(0.0, min(1.0, confidence))
-                    
-                    # 再次确保不是NaN
-                    if np.isnan(confidence):
-                        confidence = 0.5
-                    
-                    # 基础模型没有一致性指标
-                    model_agreement = None
+                # 应用校准因子
+                if raw_confidence > 0.5:
+                    confidence = 0.5 + (raw_confidence - 0.5) * CONFIDENCE_CALIBRATION
+                else:
+                    confidence = 0.5 - (0.5 - raw_confidence) * CONFIDENCE_CALIBRATION
+                
+                # 确保置信度在[0,1]范围内
+                confidence = max(0.0, min(1.0, confidence))
+                
+                # 再次确保不是NaN
+                if np.isnan(confidence):
+                    confidence = 0.5
+                
+                # 基础模型没有一致性指标
+                model_agreement = None
+            
+            is_spammer = pred_class == 1
             
             # 分析可疑行为
             suspicious_indicators = analyze_suspicious_behavior(user_weibos, user_data)
@@ -728,9 +964,7 @@ def detect():
                 warning_message = "该用户展现出一些可疑行为，请注意关注。"
             else:
                 warning_message = None
-                
-            # 构建结果
-            # 确保所有值都是可序列化的
+            
             try:
                 # 处理置信度，确保是有效数值
                 if np.isnan(confidence):
@@ -769,6 +1003,9 @@ def detect():
                         'following': int(user_data['关注数']),
                         'posts': int(user_data['微博数'])
                     }
+                
+                save_detection_history(user_id, '文本分析', text_content, result)
+                return jsonify(result)
             except Exception as e:
                 print(f"构建结果时出错: {str(e)}")
                 # 提供备用简化结果
@@ -778,16 +1015,15 @@ def detect():
                     'confidence': 50,  # 默认置信度50%
                     'error_detail': str(e)
                 }
-
-            return jsonify(result)
-        else:
-            return jsonify({'error': '用户ID不存在或无效'}), 400
+                save_detection_history(user_id, '文本分析', text_content, result)
+                return jsonify(result)
     except Exception as e:
         error_traceback = traceback.format_exc()
         print(f"处理请求时发生异常:\n{error_traceback}")
         return jsonify({'error': str(e), 'traceback': error_traceback}), 400
 
 @app.route('/network_analysis')
+@login_required
 def network_analysis():
     """网络分析页面"""
     return render_template('network_analysis.html')
@@ -856,8 +1092,8 @@ def parse_args():
                         help='最小训练用户数，低于此值将使用重复采样 (默认: 20)')
     parser.add_argument('--force_balance', action='store_true', 
                         help='强制平衡正负样本数量')
-    parser.add_argument('--port', type=int, default=5003,
-                        help='Web服务端口 (默认: 5003)')
+    parser.add_argument('--port', type=int, default=8888,
+                        help='Web服务端口 (默认: 8888)')
     return parser.parse_args()
 
 # 修改主函数部分
@@ -909,6 +1145,31 @@ if __name__ == '__main__':
     
     if not models_loaded:
         print("警告: 模型加载失败，应用将使用有限功能运行")
+    
+    # 初始化数据库
+    with app.app_context():
+        try:
+            print("创建数据库表...")
+            db.create_all()
+            
+            # 检查是否存在管理员账户，如果不存在则创建默认管理员
+            admin_user = User.query.filter_by(username='admin').first()
+            if not admin_user:
+                print("创建默认管理员账户...")
+                admin_user = User(
+                    username='admin',
+                    email='admin@example.com',
+                    real_name='系统管理员',
+                    role='admin'
+                )
+                admin_user.set_password('admin123')  # 建议在生产环境中修改
+                db.session.add(admin_user)
+                db.session.commit()
+                print("默认管理员账户创建成功 - 用户名: admin, 密码: admin123")
+            
+            print("数据库初始化完成")
+        except Exception as e:
+            print(f"数据库初始化失败: {str(e)}")
     
     # 启动Web服务
     app.run(host='0.0.0.0', port=args.port, debug=True) 
