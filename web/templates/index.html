@@ -2,8 +2,8 @@
 {% set title = "检测中心" %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-5">
+        <div class="row">
+            <div class="col-md-5">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
@@ -11,69 +11,69 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form id="detectionForm">
+                    <form id="detectionForm">
                     <div class="form-group mb-3">
-                        <label for="userId" class="form-label">用户ID</label>
-                        <input type="text" class="form-control" id="userId" placeholder="输入微博用户ID (例如: 6941098054)">
-                        <div class="form-text">如果用户ID存在于数据集中，将使用完整用户特征进行检测</div>
-                    </div>
-                    
-                    <div class="form-group mb-3">
-                        <label class="form-label">或者输入微博文本进行检测</label>
-                        <div class="mb-2">
-                            <textarea class="form-control mb-2" id="post1" rows="2" placeholder="微博文本1"></textarea>
-                            <textarea class="form-control mb-2" id="post2" rows="2" placeholder="微博文本2"></textarea>
-                            <textarea class="form-control" id="post3" rows="2" placeholder="微博文本3"></textarea>
+                            <label for="userId" class="form-label">用户ID</label>
+                            <input type="text" class="form-control" id="userId" placeholder="输入微博用户ID (例如: 6941098054)">
+                            <div class="form-text">如果用户ID存在于数据集中，将使用完整用户特征进行检测</div>
                         </div>
-                        <div class="form-text">输入多条微博文本可以提高检测准确率</div>
-                    </div>
-                    
+                        
                     <div class="form-group mb-3">
-                        <label class="form-label">用户特征参数（可选）</label>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-2">
-                                    <label class="form-label small">发帖数</label>
-                                    <input type="number" class="form-control form-control-sm" id="postCount" placeholder="默认: 5">
+                            <label class="form-label">或者输入微博文本进行检测</label>
+                            <div class="mb-2">
+                                <textarea class="form-control mb-2" id="post1" rows="2" placeholder="微博文本1"></textarea>
+                                <textarea class="form-control mb-2" id="post2" rows="2" placeholder="微博文本2"></textarea>
+                                <textarea class="form-control" id="post3" rows="2" placeholder="微博文本3"></textarea>
+                            </div>
+                            <div class="form-text">输入多条微博文本可以提高检测准确率</div>
+                        </div>
+                        
+                    <div class="form-group mb-3">
+                            <label class="form-label">用户特征参数（可选）</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label class="form-label small">发帖数</label>
+                                        <input type="number" class="form-control form-control-sm" id="postCount" placeholder="默认: 5">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">评论数</label>
+                                        <input type="number" class="form-control form-control-sm" id="commentCount" placeholder="默认: 10">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">转发数</label>
+                                        <input type="number" class="form-control form-control-sm" id="repostCount" placeholder="默认: 5">
+                                    </div>
                                 </div>
-                                <div class="mb-2">
-                                    <label class="form-label small">评论数</label>
-                                    <input type="number" class="form-control form-control-sm" id="commentCount" placeholder="默认: 10">
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label small">转发数</label>
-                                    <input type="number" class="form-control form-control-sm" id="repostCount" placeholder="默认: 5">
+                                <div class="col-md-6">
+                                    <div class="mb-2">
+                                        <label class="form-label small">点赞数</label>
+                                        <input type="number" class="form-control form-control-sm" id="likeCount" placeholder="默认: 20">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">文本长度</label>
+                                        <input type="number" class="form-control form-control-sm" id="textLength" placeholder="默认: 100">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">原创率 (0-1)</label>
+                                        <input type="number" class="form-control form-control-sm" id="originalRate" placeholder="默认: 0.5" step="0.1" min="0" max="1">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">URL率 (0-1)</label>
+                                        <input type="number" class="form-control form-control-sm" id="urlRate" placeholder="默认: 0.1" step="0.1" min="0" max="1">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-2">
-                                    <label class="form-label small">点赞数</label>
-                                    <input type="number" class="form-control form-control-sm" id="likeCount" placeholder="默认: 20">
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label small">文本长度</label>
-                                    <input type="number" class="form-control form-control-sm" id="textLength" placeholder="默认: 100">
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label small">原创率 (0-1)</label>
-                                    <input type="number" class="form-control form-control-sm" id="originalRate" placeholder="默认: 0.5" step="0.1" min="0" max="1">
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label small">URL率 (0-1)</label>
-                                    <input type="number" class="form-control form-control-sm" id="urlRate" placeholder="默认: 0.1" step="0.1" min="0" max="1">
-                                </div>
-                            </div>
+                            <div class="form-text">如果不填写，将使用默认值</div>
                         </div>
-                        <div class="form-text">如果不填写，将使用默认值</div>
-                    </div>
-                    
+                        
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-search me-1"></i>开始检测
                     </button>
-                </form>
+                    </form>
             </div>
-        </div>
-        
+                </div>
+                
         <div class="card mt-4">
             <div class="card-header">
                 <h5 class="mb-0">
@@ -82,17 +82,17 @@
             </div>
             <div class="card-body text-center">
                 <p class="card-text">
-                    深入分析正常用户与虚假用户（水军）社交网络的显著差异，包括：网络结构、转发关系、地域连接、
-                    活跃模式等多维度特征对比。
-                </p>
+                        深入分析正常用户与虚假用户（水军）社交网络的显著差异，包括：网络结构、转发关系、地域连接、
+                        活跃模式等多维度特征对比。
+                    </p>
                 <a href="{{ url_for('network_analysis') }}" class="btn btn-outline-primary">
                     <i class="fas fa-chart-line me-1"></i>查看详细分析
                 </a>
             </div>
-        </div>
-    </div>
-    
-    <div class="col-md-7">
+                </div>
+            </div>
+            
+            <div class="col-md-7">
         <div class="card" id="resultPanel" style="display:none;">
             <div class="card-header">
                 <h5 class="mb-0">
@@ -100,46 +100,46 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div id="loadingIndicator" class="text-center my-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                    <div id="loadingIndicator" class="text-center my-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">正在分析中...</p>
                     </div>
-                    <p class="mt-2">正在分析中...</p>
-                </div>
-                
-                <div id="resultContent" style="display:none;">
-                    <div class="alert" id="resultAlert" role="alert">
-                        <h4 class="alert-heading">
-                            <span id="resultLabel"></span>
-                        </h4>
-                        <p>置信度: <span id="confidenceValue"></span>%</p>
+                    
+                    <div id="resultContent" style="display:none;">
+                        <div class="alert" id="resultAlert" role="alert">
+                            <h4 class="alert-heading">
+                                <span id="resultLabel"></span>
+                            </h4>
+                            <p>置信度: <span id="confidenceValue"></span>%</p>
                         <div class="progress">
                             <div class="progress-bar" id="confidenceBar" role="progressbar" style="width: 0%">
                             </div>
                         </div>
-                    </div>
-                    
-                    <div id="userInfoSection" class="user-info" style="display:none;">
-                        <h5>用户信息</h5>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p><strong>昵称:</strong> <span id="userNickname"></span></p>
-                                <p><strong>性别:</strong> <span id="userGender"></span></p>
+                        </div>
+                        
+                        <div id="userInfoSection" class="user-info" style="display:none;">
+                            <h5>用户信息</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>昵称:</strong> <span id="userNickname"></span></p>
+                                    <p><strong>性别:</strong> <span id="userGender"></span></p>
                                 <p><strong>地区:</strong> <span id="userLocation"></span></p>
-                            </div>
-                            <div class="col-md-6">
-                                <p><strong>粉丝数:</strong> <span id="userFollowers"></span></p>
-                                <p><strong>关注数:</strong> <span id="userFollowing"></span></p>
-                                <p><strong>微博数:</strong> <span id="userPosts"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>粉丝数:</strong> <span id="userFollowers"></span></p>
+                                    <p><strong>关注数:</strong> <span id="userFollowing"></span></p>
+                                    <p><strong>微博数:</strong> <span id="userPosts"></span></p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    
+                        
                     <div id="suspiciousIndicators" class="mt-3" style="display:none;">
                         <h5>可疑行为指标</h5>
                         <div id="indicatorsList"></div>
-                    </div>
-                    
+                </div>
+                
                     <div id="userTexts" class="mt-3" style="display:none;">
                         <h5>分析文本</h5>
                         <div id="textContent" class="p-3 bg-light rounded"></div>
@@ -152,11 +152,11 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.getElementById('detectionForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const userId = document.getElementById('userId').value.trim();
+    <script>
+        document.getElementById('detectionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const userId = document.getElementById('userId').value.trim();
     const post1 = document.getElementById('post1').value.trim();
     const post2 = document.getElementById('post2').value.trim();
     const post3 = document.getElementById('post3').value.trim();
@@ -171,20 +171,20 @@ document.getElementById('detectionForm').addEventListener('submit', function(e) 
         original_rate: document.getElementById('originalRate').value || null,
         url_rate: document.getElementById('urlRate').value || null
     };
-    
+            
     // 合并文本
     const combinedText = [post1, post2, post3].filter(text => text).join(' ');
     
     if (!userId && !combinedText) {
         alert('请输入用户ID或微博文本');
-        return;
-    }
-    
-    // 显示结果面板和加载指示器
-    document.getElementById('resultPanel').style.display = 'block';
-    document.getElementById('loadingIndicator').style.display = 'block';
-    document.getElementById('resultContent').style.display = 'none';
-    
+                return;
+            }
+            
+            // 显示结果面板和加载指示器
+            document.getElementById('resultPanel').style.display = 'block';
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultContent').style.display = 'none';
+            
     // 准备数据
     const data = {
         user_id: userId,
@@ -193,18 +193,18 @@ document.getElementById('detectionForm').addEventListener('submit', function(e) 
     };
     
     // 发送请求
-    fetch('/detect', {
-        method: 'POST',
-        headers: {
+            fetch('/detect', {
+                method: 'POST',
+                headers: {
             'Content-Type': 'application/json',
-        },
+                },
         body: JSON.stringify(data)
-    })
+            })
     .then(response => response.json())
     .then(data => {
         // 隐藏加载指示器
-        document.getElementById('loadingIndicator').style.display = 'none';
-        
+                document.getElementById('loadingIndicator').style.display = 'none';
+                
         if (data.error) {
             document.getElementById('resultContent').innerHTML = `
                 <div class="alert alert-danger">
@@ -212,43 +212,43 @@ document.getElementById('detectionForm').addEventListener('submit', function(e) 
                     <p>${data.error}</p>
                 </div>
             `;
-            document.getElementById('resultContent').style.display = 'block';
+                document.getElementById('resultContent').style.display = 'block';
             return;
         }
-        
+                
         // 显示结果
         const isSpammer = data.is_spammer;
         const confidence = data.confidence;
         
         // 设置结果样式
         const resultAlert = document.getElementById('resultAlert');
-        const resultLabel = document.getElementById('resultLabel');
-        const confidenceValue = document.getElementById('confidenceValue');
-        const confidenceBar = document.getElementById('confidenceBar');
-        
+                const resultLabel = document.getElementById('resultLabel');
+                const confidenceValue = document.getElementById('confidenceValue');
+                const confidenceBar = document.getElementById('confidenceBar');
+                
         resultLabel.textContent = isSpammer ? '检测结果：水军账户' : '检测结果：正常用户';
         confidenceValue.textContent = confidence;
         confidenceBar.style.width = confidence + '%';
-        
+                
         if (isSpammer) {
-            resultAlert.className = 'alert alert-danger';
+                    resultAlert.className = 'alert alert-danger';
             confidenceBar.className = 'progress-bar bg-danger';
-        } else {
-            resultAlert.className = 'alert alert-success';
+                } else {
+                    resultAlert.className = 'alert alert-success';
             confidenceBar.className = 'progress-bar bg-success';
         }
         
         // 显示用户信息
-        if (data.user_info) {
-            document.getElementById('userNickname').textContent = data.user_info.nickname;
-            document.getElementById('userGender').textContent = data.user_info.gender;
-            document.getElementById('userLocation').textContent = data.user_info.location;
-            document.getElementById('userFollowers').textContent = data.user_info.followers;
-            document.getElementById('userFollowing').textContent = data.user_info.following;
-            document.getElementById('userPosts').textContent = data.user_info.posts;
+                if (data.user_info) {
+                    document.getElementById('userNickname').textContent = data.user_info.nickname;
+                    document.getElementById('userGender').textContent = data.user_info.gender;
+                    document.getElementById('userLocation').textContent = data.user_info.location;
+                    document.getElementById('userFollowers').textContent = data.user_info.followers;
+                    document.getElementById('userFollowing').textContent = data.user_info.following;
+                    document.getElementById('userPosts').textContent = data.user_info.posts;
             document.getElementById('userInfoSection').style.display = 'block';
-        }
-        
+                }
+                
         // 显示可疑指标
         if (data.suspicious_indicators) {
             const indicatorsList = document.getElementById('indicatorsList');
@@ -260,27 +260,27 @@ document.getElementById('detectionForm').addEventListener('submit', function(e) 
             }
             indicatorsList.innerHTML = indicatorsHtml;
             document.getElementById('suspiciousIndicators').style.display = 'block';
-        }
+                } 
         
         // 显示分析文本
         if (data.text || combinedText) {
             document.getElementById('textContent').textContent = data.text || combinedText;
             document.getElementById('userTexts').style.display = 'block';
-        }
-        
+                }
+                
         document.getElementById('resultContent').style.display = 'block';
-    })
-    .catch(error => {
-        document.getElementById('loadingIndicator').style.display = 'none';
+            })
+            .catch(error => {
+                document.getElementById('loadingIndicator').style.display = 'none';
         document.getElementById('resultContent').innerHTML = `
             <div class="alert alert-danger">
                 <h4>网络错误</h4>
                 <p>请检查网络连接后重试</p>
             </div>
         `;
-        document.getElementById('resultContent').style.display = 'block';
+                document.getElementById('resultContent').style.display = 'block';
         console.error('Error:', error);
-    });
-});
-</script>
+            });
+        });
+    </script>
 {% endblock %} 
